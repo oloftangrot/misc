@@ -2,6 +2,7 @@
  
 import socket   #for sockets
 import sys  #for exit
+import json
  
 #create an INET, STREAMing socket
 try:
@@ -29,7 +30,8 @@ s.connect((remote_ip , port))
 print 'Socket Connected to ' + host + ' on ip ' + remote_ip
  
 #Send some data to remote server
-message = "{\"method\":\"sayHello\"}"
+#message = "{\"method\":\"sayHello\"}"
+message = json.dumps({'method':'sayHello'})
  
 try :
     #Set the whole string
