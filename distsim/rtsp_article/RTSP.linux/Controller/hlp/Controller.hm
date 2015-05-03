@@ -1,0 +1,29 @@
+// MAKEHELP.BAT generated Help Map file.  Used by CONTROLLER.HPJ. 
+ 
+// Commands (ID_* and IDM_*) 
+HIDM_ABOUTBOX                           0x10010
+HID_CONNECT                             0x103E9
+HID_INITIALIZE                          0x103EA
+HID_START                               0x103EB
+HID_FILE_EXIT                           0x18004
+HID_HELP_ABOUTCONTROLLER                0x18006
+HID_OPEN                                0x18007
+HID_EXIT                                0x18008
+HID_CONTENTS                            0x18009
+HID_ABOUT                               0x1800A
+HID_HALT                                0x1E147
+HID_PING                                0x1E148
+ 
+// Prompts (IDP_*) 
+HIDP_SOCKETS_INIT_FAILED                0x30067
+ 
+// Resources (IDR_*) 
+HIDR_MAINFRAME                          0x20080
+HIDR_MENU1                              0x20081
+HIDR_MENU                               0x20082
+ 
+// Dialogs (IDD_*) 
+HIDD_ABOUTBOX                           0x20064
+HIDD_CONTROLLER_DIALOG                  0x20066
+ 
+// Frame Controls (IDW_*) 

@@ -1,0 +1,938 @@
+Terminals unused in grammar
+
+   MESSAGE_NAME
+
+
+Grammar
+
+    0 $accept: stmt_list $end
+
+    1 stmt_list: stmt
+    2          | stmt_list stmt
+
+    3 stmt: preprocessor_stmt
+    4     | const_decl
+    5     | multicast_stmt
+    6     | multicast_port_stmt
+    7     | multicast_ttl_stmt
+    8     | struct_decl
+    9     | message_decl
+   10     | federate_decl
+   11     | subscribe_decl
+
+   12 const_assign: IDENTIFIER '=' NUMBER
+
+   13 const_assign_list: const_assign
+   14                  | const_assign_list ',' const_assign
+
+   15 const_decl: CONSTANT const_assign_list ';'
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' NUMBER '.' NUMBER ';'
+
+   17 multicast_port_stmt: MULTICAST_PORT '=' NUMBER ';'
+
+   18 multicast_ttl_stmt: MULTICAST_TTL '=' NUMBER ';'
+
+   19 elem_index_list: %empty
+   20                | elem_index_list '[' NUMBER ']'
+
+   21 elem_name: IDENTIFIER elem_index_list
+
+   22 elem_list: elem_name
+   23          | elem_list ',' elem_name
+
+   24 elem_type: BASIC_TYPE
+   25          | STRUCT_NAME
+
+   26 elem_decl: elem_type elem_list ';'
+
+   27 decl_list: %empty
+   28          | decl_list elem_decl
+
+   29 struct_decl: STRUCT IDENTIFIER '{' decl_list '}' ';'
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER '{' decl_list '}' ';'
+
+   31 fed_index: %empty
+   32          | '[' NUMBER ']'
+
+   33 fed_name: IDENTIFIER fed_index
+
+   34 fed_list: fed_name
+   35         | fed_list ',' fed_name
+
+   36 federate_decl: FEDERATE fed_list ';'
+
+   37 msg_name: FEDERATE_NAME '.' IDENTIFIER
+   38         | FEDERATE_NAME '.' '*'
+
+   39 msg_list: msg_name
+   40         | msg_list ',' msg_name
+   41         | '*' '.' '*'
+
+   42 subscribe_decl: SUBSCRIBE FEDERATE_NAME ':' msg_list ';'
+
+   43 preprocessor_stmt: INCLUDE STRING
+
+
+Terminals, with rules where they appear
+
+$end (0) 0
+'*' (42) 38 41
+',' (44) 14 23 35 40
+'.' (46) 16 30 37 38 41
+':' (58) 42
+';' (59) 15 16 17 18 26 29 30 36 42
+'=' (61) 12 16 17 18
+'[' (91) 20 32
+']' (93) 20 32
+'{' (123) 29 30
+'}' (125) 29 30
+error (256)
+INCLUDE (258) 43
+STRING (259) 43
+IDENTIFIER (260) 12 21 29 30 33 37
+NUMBER (261) 12 16 17 18 20 32
+BASIC_TYPE (262) 24
+MULTICAST_BASE (263) 16
+MULTICAST_PORT (264) 17
+MULTICAST_TTL (265) 18
+CONSTANT (266) 15
+FEDERATE (267) 36
+STRUCT (268) 29
+MESSAGE (269) 30
+SUBSCRIBE (270) 42
+STRUCT_NAME (271) 25
+FEDERATE_NAME (272) 30 37 38 42
+MESSAGE_NAME (273)
+
+
+Nonterminals, with rules where they appear
+
+$accept (29)
+    on left: 0
+stmt_list (30)
+    on left: 1 2, on right: 0 2
+stmt (31)
+    on left: 3 4 5 6 7 8 9 10 11, on right: 1 2
+const_assign (32)
+    on left: 12, on right: 13 14
+const_assign_list (33)
+    on left: 13 14, on right: 14 15
+const_decl (34)
+    on left: 15, on right: 4
+multicast_stmt (35)
+    on left: 16, on right: 5
+multicast_port_stmt (36)
+    on left: 17, on right: 6
+multicast_ttl_stmt (37)
+    on left: 18, on right: 7
+elem_index_list (38)
+    on left: 19 20, on right: 20 21
+elem_name (39)
+    on left: 21, on right: 22 23
+elem_list (40)
+    on left: 22 23, on right: 23 26
+elem_type (41)
+    on left: 24 25, on right: 26
+elem_decl (42)
+    on left: 26, on right: 28
+decl_list (43)
+    on left: 27 28, on right: 28 29 30
+struct_decl (44)
+    on left: 29, on right: 8
+message_decl (45)
+    on left: 30, on right: 9
+fed_index (46)
+    on left: 31 32, on right: 33
+fed_name (47)
+    on left: 33, on right: 34 35
+fed_list (48)
+    on left: 34 35, on right: 35 36
+federate_decl (49)
+    on left: 36, on right: 10
+msg_name (50)
+    on left: 37 38, on right: 39 40
+msg_list (51)
+    on left: 39 40 41, on right: 40 42
+subscribe_decl (52)
+    on left: 42, on right: 11
+preprocessor_stmt (53)
+    on left: 43, on right: 3
+
+
+State 0
+
+    0 $accept: . stmt_list $end
+
+    INCLUDE         shift, and go to state 1
+    MULTICAST_BASE  shift, and go to state 2
+    MULTICAST_PORT  shift, and go to state 3
+    MULTICAST_TTL   shift, and go to state 4
+    CONSTANT        shift, and go to state 5
+    FEDERATE        shift, and go to state 6
+    STRUCT          shift, and go to state 7
+    MESSAGE         shift, and go to state 8
+    SUBSCRIBE       shift, and go to state 9
+
+    stmt_list            go to state 10
+    stmt                 go to state 11
+    const_decl           go to state 12
+    multicast_stmt       go to state 13
+    multicast_port_stmt  go to state 14
+    multicast_ttl_stmt   go to state 15
+    struct_decl          go to state 16
+    message_decl         go to state 17
+    federate_decl        go to state 18
+    subscribe_decl       go to state 19
+    preprocessor_stmt    go to state 20
+
+
+State 1
+
+   43 preprocessor_stmt: INCLUDE . STRING
+
+    STRING  shift, and go to state 21
+
+
+State 2
+
+   16 multicast_stmt: MULTICAST_BASE . '=' NUMBER '.' NUMBER '.' NUMBER '.' NUMBER ';'
+
+    '='  shift, and go to state 22
+
+
+State 3
+
+   17 multicast_port_stmt: MULTICAST_PORT . '=' NUMBER ';'
+
+    '='  shift, and go to state 23
+
+
+State 4
+
+   18 multicast_ttl_stmt: MULTICAST_TTL . '=' NUMBER ';'
+
+    '='  shift, and go to state 24
+
+
+State 5
+
+   15 const_decl: CONSTANT . const_assign_list ';'
+
+    IDENTIFIER  shift, and go to state 25
+
+    const_assign       go to state 26
+    const_assign_list  go to state 27
+
+
+State 6
+
+   36 federate_decl: FEDERATE . fed_list ';'
+
+    IDENTIFIER  shift, and go to state 28
+
+    fed_name  go to state 29
+    fed_list  go to state 30
+
+
+State 7
+
+   29 struct_decl: STRUCT . IDENTIFIER '{' decl_list '}' ';'
+
+    IDENTIFIER  shift, and go to state 31
+
+
+State 8
+
+   30 message_decl: MESSAGE . FEDERATE_NAME '.' IDENTIFIER '{' decl_list '}' ';'
+
+    FEDERATE_NAME  shift, and go to state 32
+
+
+State 9
+
+   42 subscribe_decl: SUBSCRIBE . FEDERATE_NAME ':' msg_list ';'
+
+    FEDERATE_NAME  shift, and go to state 33
+
+
+State 10
+
+    0 $accept: stmt_list . $end
+    2 stmt_list: stmt_list . stmt
+
+    $end            shift, and go to state 34
+    INCLUDE         shift, and go to state 1
+    MULTICAST_BASE  shift, and go to state 2
+    MULTICAST_PORT  shift, and go to state 3
+    MULTICAST_TTL   shift, and go to state 4
+    CONSTANT        shift, and go to state 5
+    FEDERATE        shift, and go to state 6
+    STRUCT          shift, and go to state 7
+    MESSAGE         shift, and go to state 8
+    SUBSCRIBE       shift, and go to state 9
+
+    stmt                 go to state 35
+    const_decl           go to state 12
+    multicast_stmt       go to state 13
+    multicast_port_stmt  go to state 14
+    multicast_ttl_stmt   go to state 15
+    struct_decl          go to state 16
+    message_decl         go to state 17
+    federate_decl        go to state 18
+    subscribe_decl       go to state 19
+    preprocessor_stmt    go to state 20
+
+
+State 11
+
+    1 stmt_list: stmt .
+
+    $default  reduce using rule 1 (stmt_list)
+
+
+State 12
+
+    4 stmt: const_decl .
+
+    $default  reduce using rule 4 (stmt)
+
+
+State 13
+
+    5 stmt: multicast_stmt .
+
+    $default  reduce using rule 5 (stmt)
+
+
+State 14
+
+    6 stmt: multicast_port_stmt .
+
+    $default  reduce using rule 6 (stmt)
+
+
+State 15
+
+    7 stmt: multicast_ttl_stmt .
+
+    $default  reduce using rule 7 (stmt)
+
+
+State 16
+
+    8 stmt: struct_decl .
+
+    $default  reduce using rule 8 (stmt)
+
+
+State 17
+
+    9 stmt: message_decl .
+
+    $default  reduce using rule 9 (stmt)
+
+
+State 18
+
+   10 stmt: federate_decl .
+
+    $default  reduce using rule 10 (stmt)
+
+
+State 19
+
+   11 stmt: subscribe_decl .
+
+    $default  reduce using rule 11 (stmt)
+
+
+State 20
+
+    3 stmt: preprocessor_stmt .
+
+    $default  reduce using rule 3 (stmt)
+
+
+State 21
+
+   43 preprocessor_stmt: INCLUDE STRING .
+
+    $default  reduce using rule 43 (preprocessor_stmt)
+
+
+State 22
+
+   16 multicast_stmt: MULTICAST_BASE '=' . NUMBER '.' NUMBER '.' NUMBER '.' NUMBER ';'
+
+    NUMBER  shift, and go to state 36
+
+
+State 23
+
+   17 multicast_port_stmt: MULTICAST_PORT '=' . NUMBER ';'
+
+    NUMBER  shift, and go to state 37
+
+
+State 24
+
+   18 multicast_ttl_stmt: MULTICAST_TTL '=' . NUMBER ';'
+
+    NUMBER  shift, and go to state 38
+
+
+State 25
+
+   12 const_assign: IDENTIFIER . '=' NUMBER
+
+    '='  shift, and go to state 39
+
+
+State 26
+
+   13 const_assign_list: const_assign .
+
+    $default  reduce using rule 13 (const_assign_list)
+
+
+State 27
+
+   14 const_assign_list: const_assign_list . ',' const_assign
+   15 const_decl: CONSTANT const_assign_list . ';'
+
+    ','  shift, and go to state 40
+    ';'  shift, and go to state 41
+
+
+State 28
+
+   33 fed_name: IDENTIFIER . fed_index
+
+    '['  shift, and go to state 42
+
+    $default  reduce using rule 31 (fed_index)
+
+    fed_index  go to state 43
+
+
+State 29
+
+   34 fed_list: fed_name .
+
+    $default  reduce using rule 34 (fed_list)
+
+
+State 30
+
+   35 fed_list: fed_list . ',' fed_name
+   36 federate_decl: FEDERATE fed_list . ';'
+
+    ','  shift, and go to state 44
+    ';'  shift, and go to state 45
+
+
+State 31
+
+   29 struct_decl: STRUCT IDENTIFIER . '{' decl_list '}' ';'
+
+    '{'  shift, and go to state 46
+
+
+State 32
+
+   30 message_decl: MESSAGE FEDERATE_NAME . '.' IDENTIFIER '{' decl_list '}' ';'
+
+    '.'  shift, and go to state 47
+
+
+State 33
+
+   42 subscribe_decl: SUBSCRIBE FEDERATE_NAME . ':' msg_list ';'
+
+    ':'  shift, and go to state 48
+
+
+State 34
+
+    0 $accept: stmt_list $end .
+
+    $default  accept
+
+
+State 35
+
+    2 stmt_list: stmt_list stmt .
+
+    $default  reduce using rule 2 (stmt_list)
+
+
+State 36
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER . '.' NUMBER '.' NUMBER '.' NUMBER ';'
+
+    '.'  shift, and go to state 49
+
+
+State 37
+
+   17 multicast_port_stmt: MULTICAST_PORT '=' NUMBER . ';'
+
+    ';'  shift, and go to state 50
+
+
+State 38
+
+   18 multicast_ttl_stmt: MULTICAST_TTL '=' NUMBER . ';'
+
+    ';'  shift, and go to state 51
+
+
+State 39
+
+   12 const_assign: IDENTIFIER '=' . NUMBER
+
+    NUMBER  shift, and go to state 52
+
+
+State 40
+
+   14 const_assign_list: const_assign_list ',' . const_assign
+
+    IDENTIFIER  shift, and go to state 25
+
+    const_assign  go to state 53
+
+
+State 41
+
+   15 const_decl: CONSTANT const_assign_list ';' .
+
+    $default  reduce using rule 15 (const_decl)
+
+
+State 42
+
+   32 fed_index: '[' . NUMBER ']'
+
+    NUMBER  shift, and go to state 54
+
+
+State 43
+
+   33 fed_name: IDENTIFIER fed_index .
+
+    $default  reduce using rule 33 (fed_name)
+
+
+State 44
+
+   35 fed_list: fed_list ',' . fed_name
+
+    IDENTIFIER  shift, and go to state 28
+
+    fed_name  go to state 55
+
+
+State 45
+
+   36 federate_decl: FEDERATE fed_list ';' .
+
+    $default  reduce using rule 36 (federate_decl)
+
+
+State 46
+
+   29 struct_decl: STRUCT IDENTIFIER '{' . decl_list '}' ';'
+
+    $default  reduce using rule 27 (decl_list)
+
+    decl_list  go to state 56
+
+
+State 47
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' . IDENTIFIER '{' decl_list '}' ';'
+
+    IDENTIFIER  shift, and go to state 57
+
+
+State 48
+
+   42 subscribe_decl: SUBSCRIBE FEDERATE_NAME ':' . msg_list ';'
+
+    FEDERATE_NAME  shift, and go to state 58
+    '*'            shift, and go to state 59
+
+    msg_name  go to state 60
+    msg_list  go to state 61
+
+
+State 49
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' . NUMBER '.' NUMBER '.' NUMBER ';'
+
+    NUMBER  shift, and go to state 62
+
+
+State 50
+
+   17 multicast_port_stmt: MULTICAST_PORT '=' NUMBER ';' .
+
+    $default  reduce using rule 17 (multicast_port_stmt)
+
+
+State 51
+
+   18 multicast_ttl_stmt: MULTICAST_TTL '=' NUMBER ';' .
+
+    $default  reduce using rule 18 (multicast_ttl_stmt)
+
+
+State 52
+
+   12 const_assign: IDENTIFIER '=' NUMBER .
+
+    $default  reduce using rule 12 (const_assign)
+
+
+State 53
+
+   14 const_assign_list: const_assign_list ',' const_assign .
+
+    $default  reduce using rule 14 (const_assign_list)
+
+
+State 54
+
+   32 fed_index: '[' NUMBER . ']'
+
+    ']'  shift, and go to state 63
+
+
+State 55
+
+   35 fed_list: fed_list ',' fed_name .
+
+    $default  reduce using rule 35 (fed_list)
+
+
+State 56
+
+   28 decl_list: decl_list . elem_decl
+   29 struct_decl: STRUCT IDENTIFIER '{' decl_list . '}' ';'
+
+    BASIC_TYPE   shift, and go to state 64
+    STRUCT_NAME  shift, and go to state 65
+    '}'          shift, and go to state 66
+
+    elem_type  go to state 67
+    elem_decl  go to state 68
+
+
+State 57
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER . '{' decl_list '}' ';'
+
+    '{'  shift, and go to state 69
+
+
+State 58
+
+   37 msg_name: FEDERATE_NAME . '.' IDENTIFIER
+   38         | FEDERATE_NAME . '.' '*'
+
+    '.'  shift, and go to state 70
+
+
+State 59
+
+   41 msg_list: '*' . '.' '*'
+
+    '.'  shift, and go to state 71
+
+
+State 60
+
+   39 msg_list: msg_name .
+
+    $default  reduce using rule 39 (msg_list)
+
+
+State 61
+
+   40 msg_list: msg_list . ',' msg_name
+   42 subscribe_decl: SUBSCRIBE FEDERATE_NAME ':' msg_list . ';'
+
+    ','  shift, and go to state 72
+    ';'  shift, and go to state 73
+
+
+State 62
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER . '.' NUMBER '.' NUMBER ';'
+
+    '.'  shift, and go to state 74
+
+
+State 63
+
+   32 fed_index: '[' NUMBER ']' .
+
+    $default  reduce using rule 32 (fed_index)
+
+
+State 64
+
+   24 elem_type: BASIC_TYPE .
+
+    $default  reduce using rule 24 (elem_type)
+
+
+State 65
+
+   25 elem_type: STRUCT_NAME .
+
+    $default  reduce using rule 25 (elem_type)
+
+
+State 66
+
+   29 struct_decl: STRUCT IDENTIFIER '{' decl_list '}' . ';'
+
+    ';'  shift, and go to state 75
+
+
+State 67
+
+   26 elem_decl: elem_type . elem_list ';'
+
+    IDENTIFIER  shift, and go to state 76
+
+    elem_name  go to state 77
+    elem_list  go to state 78
+
+
+State 68
+
+   28 decl_list: decl_list elem_decl .
+
+    $default  reduce using rule 28 (decl_list)
+
+
+State 69
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER '{' . decl_list '}' ';'
+
+    $default  reduce using rule 27 (decl_list)
+
+    decl_list  go to state 79
+
+
+State 70
+
+   37 msg_name: FEDERATE_NAME '.' . IDENTIFIER
+   38         | FEDERATE_NAME '.' . '*'
+
+    IDENTIFIER  shift, and go to state 80
+    '*'         shift, and go to state 81
+
+
+State 71
+
+   41 msg_list: '*' '.' . '*'
+
+    '*'  shift, and go to state 82
+
+
+State 72
+
+   40 msg_list: msg_list ',' . msg_name
+
+    FEDERATE_NAME  shift, and go to state 58
+
+    msg_name  go to state 83
+
+
+State 73
+
+   42 subscribe_decl: SUBSCRIBE FEDERATE_NAME ':' msg_list ';' .
+
+    $default  reduce using rule 42 (subscribe_decl)
+
+
+State 74
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' . NUMBER '.' NUMBER ';'
+
+    NUMBER  shift, and go to state 84
+
+
+State 75
+
+   29 struct_decl: STRUCT IDENTIFIER '{' decl_list '}' ';' .
+
+    $default  reduce using rule 29 (struct_decl)
+
+
+State 76
+
+   21 elem_name: IDENTIFIER . elem_index_list
+
+    $default  reduce using rule 19 (elem_index_list)
+
+    elem_index_list  go to state 85
+
+
+State 77
+
+   22 elem_list: elem_name .
+
+    $default  reduce using rule 22 (elem_list)
+
+
+State 78
+
+   23 elem_list: elem_list . ',' elem_name
+   26 elem_decl: elem_type elem_list . ';'
+
+    ','  shift, and go to state 86
+    ';'  shift, and go to state 87
+
+
+State 79
+
+   28 decl_list: decl_list . elem_decl
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER '{' decl_list . '}' ';'
+
+    BASIC_TYPE   shift, and go to state 64
+    STRUCT_NAME  shift, and go to state 65
+    '}'          shift, and go to state 88
+
+    elem_type  go to state 67
+    elem_decl  go to state 68
+
+
+State 80
+
+   37 msg_name: FEDERATE_NAME '.' IDENTIFIER .
+
+    $default  reduce using rule 37 (msg_name)
+
+
+State 81
+
+   38 msg_name: FEDERATE_NAME '.' '*' .
+
+    $default  reduce using rule 38 (msg_name)
+
+
+State 82
+
+   41 msg_list: '*' '.' '*' .
+
+    $default  reduce using rule 41 (msg_list)
+
+
+State 83
+
+   40 msg_list: msg_list ',' msg_name .
+
+    $default  reduce using rule 40 (msg_list)
+
+
+State 84
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' NUMBER . '.' NUMBER ';'
+
+    '.'  shift, and go to state 89
+
+
+State 85
+
+   20 elem_index_list: elem_index_list . '[' NUMBER ']'
+   21 elem_name: IDENTIFIER elem_index_list .
+
+    '['  shift, and go to state 90
+
+    $default  reduce using rule 21 (elem_name)
+
+
+State 86
+
+   23 elem_list: elem_list ',' . elem_name
+
+    IDENTIFIER  shift, and go to state 76
+
+    elem_name  go to state 91
+
+
+State 87
+
+   26 elem_decl: elem_type elem_list ';' .
+
+    $default  reduce using rule 26 (elem_decl)
+
+
+State 88
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER '{' decl_list '}' . ';'
+
+    ';'  shift, and go to state 92
+
+
+State 89
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' NUMBER '.' . NUMBER ';'
+
+    NUMBER  shift, and go to state 93
+
+
+State 90
+
+   20 elem_index_list: elem_index_list '[' . NUMBER ']'
+
+    NUMBER  shift, and go to state 94
+
+
+State 91
+
+   23 elem_list: elem_list ',' elem_name .
+
+    $default  reduce using rule 23 (elem_list)
+
+
+State 92
+
+   30 message_decl: MESSAGE FEDERATE_NAME '.' IDENTIFIER '{' decl_list '}' ';' .
+
+    $default  reduce using rule 30 (message_decl)
+
+
+State 93
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' NUMBER '.' NUMBER . ';'
+
+    ';'  shift, and go to state 95
+
+
+State 94
+
+   20 elem_index_list: elem_index_list '[' NUMBER . ']'
+
+    ']'  shift, and go to state 96
+
+
+State 95
+
+   16 multicast_stmt: MULTICAST_BASE '=' NUMBER '.' NUMBER '.' NUMBER '.' NUMBER ';' .
+
+    $default  reduce using rule 16 (multicast_stmt)
+
+
+State 96
+
+   20 elem_index_list: elem_index_list '[' NUMBER ']' .
+
+    $default  reduce using rule 20 (elem_index_list)

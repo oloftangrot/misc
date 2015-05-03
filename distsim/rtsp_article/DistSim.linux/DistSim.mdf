@@ -1,0 +1,31 @@
+// Distributed Simulation Message Definition
+
+// Declare names for all federates:
+federate CommandGenerator, Controller, Plant;
+
+// Define messages. The federate named with each message is the sender.
+
+message CommandGenerator.Update
+{
+    double command;
+};
+
+message Controller.Update
+{
+    double drive;
+};
+
+message Plant.Update
+{
+    double output;
+};
+
+// Subscription list. Each federate can subscribe to (i.e., receive) any
+// message including ones it produces.
+
+// The Controller gets updates from the CommandGenerator and Plant
+subscribe Controller : CommandGenerator.Update, Plant.Update;
+
+// The Plant gets updates from the Controller
+subscribe Plant : Controller.Update;
+

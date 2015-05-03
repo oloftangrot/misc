@@ -1,0 +1,26 @@
+!MS$FREEFORM
+! Microsoft Developer Studio generated include file.
+! Used by Controller.rc
+!
+      integer, parameter :: IDM_ABOUTBOX                    = 16
+      integer, parameter :: IDD_ABOUTBOX                    = 100
+      integer, parameter :: IDS_ABOUTBOX                    = 101
+      integer, parameter :: IDD_CONTROLLER_DIALOG           = 102
+      integer, parameter :: IDP_SOCKETS_INIT_FAILED         = 103
+      integer, parameter :: IDR_MAINFRAME                   = 128
+      integer, parameter :: IDR_MENU1                       = 129
+      integer, parameter :: IDR_MENU                        = 130
+      integer, parameter :: IDC_LIST1                       = 1000
+      integer, parameter :: IDC_LIST                        = 1000
+      integer, parameter :: ID_CONNECT                      = 1001
+      integer, parameter :: ID_INITIALIZE                   = 1002
+      integer, parameter :: ID_START                        = 1003
+      integer, parameter :: IDC_FEDERATION_STATUS           = 1006
+      integer, parameter :: ID_FILE_EXIT                    = 32772
+      integer, parameter :: ID_HELP_ABOUTCONTROLLER         = 32774
+      integer, parameter :: ID_OPEN                         = 32775
+      integer, parameter :: ID_EXIT                         = 32776
+      integer, parameter :: ID_CONTENTS                     = 32777
+      integer, parameter :: ID_ABOUT                        = 32778
+      integer, parameter :: ID_HALT                         = 57671
+      integer, parameter :: ID_PING                         = 57672

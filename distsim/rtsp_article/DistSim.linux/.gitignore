@@ -1,0 +1,5 @@
+*.o
+*~
+Plant
+Controller
+CommandGenerator

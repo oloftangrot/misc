@@ -1,0 +1,12 @@
+
+Extra install depencencies the might not be avaliabe on the computer. Done on Ubuntu LTS 14.04
+
+sudo apt-get install libboost-dev tcl-dev tk-dev
+
+Changes to Makefile,
+
+INCLUDES = -I.. -I/usr/include/tcl8.6 -I/usr/include/tk8.6 -I/usr/X11R6/include -I/usr/local/include/boost_1_33_0
+LIBDIRS = -L/usr/local/lib
+LIBS = -ltcl8.6 -ltk8.6
+
+
