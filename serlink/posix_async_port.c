@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
+#define __USE_MISC
+#define __USE_BSD
 #include <termios.h>
 #include <fcntl.h>
 //#include <sys/time.h>
