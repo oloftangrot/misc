@@ -61,8 +61,8 @@ struct rules {
   { 0, waitForTail }
 };
 
-enum parseState pS;
-
+static enum parseState pS;
+static size_t cnt;
 
 void httpParserInit( void )
 {
@@ -70,10 +70,10 @@ void httpParserInit( void )
 //  Serial.println("Hello from Arduino WEB-server"); 
 //  Serial.println( strlen( www[0] ) );
 	pS = waitForGet;
+	cnt = 0;
 }
 
 int in;
-size_t cnt;
 int commandCnt;
 int cmd;
 
@@ -129,5 +129,7 @@ void httpParser( unsigned char in )
       break;
     case waitForTail:
       break;      
+		case waitForArg:
+			break;
   } /* Switch */
 }
