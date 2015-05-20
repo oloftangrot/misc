@@ -1,7 +1,12 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifndef __USE_MISC
 #define __USE_MISC
+#endif
+#ifndef __USE_BSD
 #define __USE_BSD
+#endif
 #include <termios.h>
 #include <fcntl.h>
 //#include <sys/time.h>
