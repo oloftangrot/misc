@@ -20,7 +20,7 @@ esp8266trial1: esp8266trial1.c http_parser.c
 	gcc -Wall -std=c99 -o $@ $^ ../serlink/posix_async_port.c 
 
 esp8266trial2: esp8266trial2.cpp http_parser.c
-	g++ -Wall -o $@ $^ ../serlink/posix_async_port.c 
+	g++ -g -Wall -o $@ $^ ../serlink/posix_async_port.c 
 	
 clean:
 	rm esp8266trial1 
