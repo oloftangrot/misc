@@ -31,7 +31,7 @@ typedef bool boolean; // Use the c++ type
 
 
 char const * const esp8266atCmd[5] = {
-	"AT\r\n",          /* Test AT modem precense */
+	"A?\r\n",          /* Test AT modem precense */
 	"AT+CWMODE=3\r\n",  /* Working mode: AP+STA */
 	"AT+CIPMUX=1\r\n",	 /* Turn on multiple connection */
 	"AT+CIPSERVER=1,9999\r\n", /* Start the server listening on socket 9999 */
@@ -40,8 +40,8 @@ char const * const esp8266atCmd[5] = {
 
 #define NUM_AT_REPLY (2)
 char const * const atReply[NUM_AT_REPLY] = {
-	"OK\r\n",		/* Response when the command passed */
-	"ERROR\r\n" /* Response when the command failed */
+	"\n\r\nOK\r\n",		/* Response when the command passed */
+	"\nError\r\n" /* Response when the command failed */
 };
 
 void write_buf( char const * buf, size_t len )
@@ -80,7 +80,7 @@ void initAtParser( unsigned char current )
 {
 	cnt = 0;
 	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
-		flags[i] = false;
+		flags[i] = true;
 	}
 	currentCmd = current;
 	atPS = waitForCmdEcho;
@@ -89,13 +89,16 @@ void initAtParser( unsigned char current )
 
 enum atParseState atParse( unsigned char in )
 {
+	boolean oneMatch;
 	switch ( atPS ) {
 		case waitForCmdEcho:
-			printf( "atParse %d %d %d!\n", cnt, in, esp8266atCmd[currentCmd][cnt] );
-			if ( in == esp8266atCmd[currentCmd][cnt] ) {
+//			printf( "waitForCmdEcho %ld %d %d\n", cnt, in, esp8266atCmd[currentCmd][cnt] );
+			if ( ( in == esp8266atCmd[currentCmd][cnt] ) || 
+			     ( ( in == 13 ) && ( esp8266atCmd[currentCmd][cnt] == 10 ) ) )
+			{
 				cnt++;
 				if ( cnt == strlen( esp8266atCmd[currentCmd] ) ) {
-					printf ( "Found command %s!\n", esp8266atCmd[currentCmd] ); 
+					printf ( "Found command %s\n", esp8266atCmd[currentCmd] ); 
 					cnt = 0; 
 					atPS = waitForCmdReply;
 				}
@@ -105,32 +108,36 @@ enum atParseState atParse( unsigned char in )
 			}
 			break;
 		case waitForCmdReply:
+			printf( "waitForCmdReply %ld %d\n", cnt, in );
+			oneMatch = false;
 			for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
-        if ( flags[i] ) {
-          if ( in == atReply[ i ][ cnt ] ) {
-            if ( ( cnt + 1 ) == strlen( atReply[ i ] ) ) {
-              printf( "Found reply " ); 
-              printf( "%s\n", atReply[ i ] ); 
-              cnt = -1; // Let the out of loop cnt++ increment to 0.
-              atReplyId = i; // Save the found command
-              atPS = replyRules[i];
-              break; // Break out from the for loop
-            }
-          }
-          else {
-            flags[i] = false;
-            replyCnt--;
-            printf( "Reply ruled out %d\n", i );
-          }
-        }
-      }
-      cnt++;
-      if ( 0 == replyCnt ) { 
-        atPS = resultParseFailure; 
-        cnt = 0;
-        printf( "Reset reply search\n" ); // Some parse flag should be set.
-      }
-      break;
+				if ( flags[i] ) {
+					printf( "   %d %d\n", i, atReply[ i ][ cnt ] );
+					if ( in == atReply[ i ][ cnt ] ) {
+						oneMatch = true;
+						if ( ( cnt + 1 ) == strlen( atReply[ i ] ) ) {
+							printf( "Found reply " ); 
+							printf( "%s\n", atReply[ i ] ); 
+							cnt = -1; // Let the out of loop cnt++ increment to 0.
+							atReplyId = i; // Save the found command
+							atPS = replyRules[i];
+							break; // Break out from the for loop
+						} 
+					}
+					else {
+						flags[i] = false;
+						replyCnt--;
+						printf( "Reply ruled out %d\n", i );
+					}
+				}
+      			}
+			if ( oneMatch ) cnt++; // At least one matching reply string was found
+			if ( 0 == replyCnt ) { 
+				atPS = resultParseFailure; 
+				cnt = 0;
+				printf( "Reset reply search\n" ); // Some parse flag should be set.
+			}
+      			break;
 		case waitForData:
 		case waitForSocketData:
 		case waitForLength:
@@ -138,15 +145,15 @@ enum atParseState atParse( unsigned char in )
 		case resultParseFailure:
 		case resultOk:
 		case resultError:
-
 			break;
-  } /* Switch */
+	} /* Switch */
 	return atPS;
 }
 
 int main ( int argc, char * argv[] )
 {
 	unsigned char chan, c;	
+	enum atParseState parseResult;
 	int res;
 
 	if(argc < 2) {
@@ -166,13 +173,15 @@ int main ( int argc, char * argv[] )
 	do {
 		res = async_getchar( &c );
 		if ( res > 0 ) {
-			putc( c, stdout );
-			atParse( c );
+//			putc( c, stdout );
+			parseResult = atParse( c );
 		}
 		else {
 			c = 0;
 		}
-	} while ( c != 'K' );
+	} while ( ( parseResult != resultOk ) && 
+		  ( parseResult != resultError ) && 
+		  ( parseResult != resultParseFailure ) );
 
 	// Now wait for incomming data, store the incoming channel
 
