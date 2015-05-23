@@ -19,6 +19,7 @@
 #include "wap.h"
 #undef PARSE_DEBUG_CMD
 #undef PARSE_DEBUG_REP1
+#define PARSE_DEBUG_REP2
 
 #include "../serlink/async_port.h"
 
@@ -33,19 +34,21 @@ typedef bool boolean; // Use the c++ type
 #endif
 
 
-char const * const esp8266atCmd[5] = {
+char const * const esp8266atCmd[6] = {
 	"AT\r\n",          /* Test AT modem precense */
 	"AT+CWMODE=3\r\n",  /* Working mode: AP+STA */
+	"AT+CWJAP="ssid","passwd"\r\n",
 	"AT+CIPMUX=1\r\n",	 /* Turn on multiple connection */
 	"AT+CIPSERVER=1,9999\r\n", /* Start the server listening on socket 9999 */
 	"+IPD," /* Some one connected on the socket and sent data. */
 };
 
-#define NUM_AT_REPLY (3)
+#define NUM_AT_REPLY (4)
 char const * const atReply[NUM_AT_REPLY] = {
-	"\n\r\nOK\r\n",		/* Response when the command passed */
-	"\nno change\r\n", /* Typical response to AT+CWMODE=3 */
-	"\nError\r\n" /* Response when the command failed */
+	"\n\r\nOK\r\n",			/* Response when the command passed */
+	"\nno change\r\n",	/* Typical response to AT+CWMODE=3 */
+	"\nError\r\n",			/* Response when the command failed */
+	"\n\r\nFAIL\r\n"		/* Response when the AT+CWJAP failed */
 };
 
 void write_buf( char const * buf, size_t len )
@@ -72,7 +75,8 @@ enum atParseState atPS;
 enum atParseState replyRules[NUM_AT_REPLY] = {
 	resultOk,
 	resultOk,
-	resultError
+	resultError,
+	resultError,
 };
 
 static size_t cnt;
@@ -117,7 +121,7 @@ enum atParseState atParse( unsigned char in )
 			}
 			break;
 		case waitForCmdReply:
-#ifdef PARSE_DEBUG_1
+#ifdef PARSE_DEBUG_REP1
 			printf( "waitForCmdReply %ld %d\n", cnt, in );
 #endif
 			oneMatch = false;
@@ -201,7 +205,7 @@ int main ( int argc, char * argv[] )
 		fprintf( stderr, "Usage:  %s [devname]\n", argv[0] );
 		return 1;
 	}
-	printf ( "%s : %s\n", ssid, passwd );
+	printf ( "%s \n", esp8266atCmd[2] );
 	asyncInit( argv[1] );
 
 	// Initialize the modem, in each step wait for Ok.
@@ -209,6 +213,10 @@ int main ( int argc, char * argv[] )
 	sendATcommand( 0 ); // First check if there is an AT modem connected.
 	printf( "Testing command 1...\n" );
 	sendATcommand( 1 ); // First check if there is an AT modem connected.
+	printf( "Sleeping...\n" );
+	sleep( 2 );
+	printf( "Testing command 2...\n" );
+	sendATcommand( 2 ); // First check if there is an AT modem connected.
 
 	// Now wait for incomming data, store the incoming channel
 
