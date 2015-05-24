@@ -212,11 +212,13 @@ int main ( int argc, char * argv[] )
 	printf( "Testing command 0...\n" );
 	sendATcommand( 0 ); // First check if there is an AT modem connected.
 	printf( "Testing command 1...\n" );
-	sendATcommand( 1 ); // First check if there is an AT modem connected.
-	printf( "Sleeping...\n" );
-	sleep( 2 );
+	sendATcommand( 1 ); // Set up access mode.
 	printf( "Testing command 2...\n" );
-	sendATcommand( 2 ); // First check if there is an AT modem connected.
+	sendATcommand( 2 ); // Connect to as wireless access point.
+	printf( "Testing command 3...\n" );
+	sendATcommand( 3 ); // Allow multiple connections.
+	printf( "Testing command 4...\n" );
+	sendATcommand( 4 ); // Start a server.
 
 	// Now wait for incomming data, store the incoming channel
 
