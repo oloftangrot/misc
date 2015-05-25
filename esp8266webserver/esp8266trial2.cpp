@@ -17,9 +17,10 @@
 #include <string.h>
 #include <unistd.h>
 #include "wap.h"
-#undef PARSE_DEBUG_CMD
-#undef PARSE_DEBUG_REP1
-#define PARSE_DEBUG_REP2
+#undef PARSE_DEBUG_waitForCmdEcho
+#undef PARSE_DEBUG_waitForCmdReply1
+#define PARSE_DEBUG_waitForCmdReply2
+#define PARSE_DEBUG_waitForData
 
 #include "../serlink/async_port.h"
 
@@ -33,6 +34,14 @@ enum {
 typedef bool boolean; // Use the c++ type
 #endif
 
+enum commandPosition { // Positions in the command string array.
+	attest_cmd = 0,
+	mode_cmd   = 1,
+	join_cmd   = 2,
+	ipmux_cmd  = 3,
+	server_cmd = 4,
+	data_cmd   = 5
+};
 
 char const * const esp8266atCmd[6] = {
 	"AT\r\n",          /* Test AT modem precense */
@@ -88,12 +97,18 @@ static boolean flags[NUM_AT_REPLY];
 void initAtParser( unsigned char current )
 {
 	cnt = 0;
-	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
-		flags[i] = true;
+	if ( data_cmd == current ) {
+		atPS = waitForData;
+		// TODO reset any other counters....?
 	}
-	currentCmd = current;
-	atPS = waitForCmdEcho;
-	replyCnt = NUM_AT_REPLY;
+	else {
+		for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
+			flags[i] = true;
+		}
+		currentCmd = current;
+		atPS = waitForCmdEcho;
+		replyCnt = NUM_AT_REPLY;
+	}
 }
 
 enum atParseState atParse( unsigned char in )
@@ -101,7 +116,7 @@ enum atParseState atParse( unsigned char in )
 	boolean oneMatch;
 	switch ( atPS ) {
 		case waitForCmdEcho:
-#ifdef PARSE_DEBUG_CMD
+#ifdef PARSE_DEBUG_waitForCmdEcho
 			printf( "waitForCmdEcho %ld %d %d\n", cnt, in, esp8266atCmd[currentCmd][cnt] );
 #endif
 			if ( ( in == esp8266atCmd[currentCmd][cnt] ) || 
@@ -109,7 +124,7 @@ enum atParseState atParse( unsigned char in )
 			{
 				cnt++;
 				if ( cnt == strlen( esp8266atCmd[currentCmd] ) ) {
-#ifdef PARSE_DEBUG_CMD
+#ifdef PARSE_DEBUG_waitForCmdEcho
 					printf ( "Found command %s\n", esp8266atCmd[currentCmd] ); 
 #endif
 					cnt = 0; 
@@ -121,19 +136,19 @@ enum atParseState atParse( unsigned char in )
 			}
 			break;
 		case waitForCmdReply:
-#ifdef PARSE_DEBUG_REP1
+#ifdef PARSE_DEBUG_waitForCmdReply1
 			printf( "waitForCmdReply %ld %d\n", cnt, in );
 #endif
 			oneMatch = false;
 			for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
 				if ( flags[i] ) {
-#ifdef PARSE_DEBUG_REP1
+#ifdef PARSE_DEBUG_waitForCmdReply1
 					printf( "   %d %d\n", i, atReply[ i ][ cnt ] );
 #endif
 					if ( in == atReply[ i ][ cnt ] ) {
 						oneMatch = true;
 						if ( ( cnt + 1 ) == strlen( atReply[ i ] ) ) {
-#ifdef PARSE_DEBUG_REP1
+#ifdef PARSE_DEBUG_waitForCmdReply1
 							printf( "Found reply " ); 
 #endif
 							printf( "%s\n", atReply[ i ] ); 
@@ -146,22 +161,37 @@ enum atParseState atParse( unsigned char in )
 					else {
 						flags[i] = false;
 						replyCnt--;
-#ifdef PARSE_DEBUG_REP2
+#ifdef PARSE_DEBUG_waitForCmdReply2
 						printf( "Reply ruled out %d\n", i );
 #endif
 					}
 				}
-      			}
+			}
 			if ( oneMatch ) cnt++; // At least one matching reply string was found
 			if ( 0 == replyCnt ) { 
 				atPS = resultParseFailure; 
 				cnt = 0;
-#ifdef PARSE_DEBUG_REP2
+#ifdef PARSE_DEBUG_waitForCmdReply2
 				printf( "Reset reply search\n" ); // Some parse flag should be set.
 #endif
 			}
-      			break;
+      break;
 		case waitForData:
+#ifdef PARSE_DEBUG_waitForData
+			printf( "waitForData %ld %d %d\n", cnt, in, esp8266atCmd[data_cmd][cnt] );
+#endif
+			if ( ( in == esp8266atCmd[data_cmd][cnt] ) || 
+			     ( ( in == 13 ) && ( esp8266atCmd[data_cmd][cnt] == 10 ) ) )
+			{
+				cnt++;
+				if ( cnt == strlen( esp8266atCmd[data_cmd] ) ) {
+#ifdef PARSE_DEBUG_waitForData
+					printf ( "Found command %s\n", esp8266atCmd[data_cmd] ); 
+#endif
+					cnt = 0; 
+					atPS = waitForCmdReply;
+				}
+			}
 		case waitForSocketData:
 		case waitForLength:
 		case waitForTail:
