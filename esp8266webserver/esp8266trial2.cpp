@@ -21,6 +21,8 @@
 #undef PARSE_DEBUG_waitForCmdReply1
 #define PARSE_DEBUG_waitForCmdReply2
 #define PARSE_DEBUG_waitForData
+#define PARSE_DEBUG_waitForLength
+#define PARSE_DEBUG_waitForConnectionId
 
 #include "../serlink/async_port.h"
 
@@ -72,6 +74,7 @@ enum atParseState {
   waitForCmdReply,
   waitForSocketData,
   waitForLength,
+	waitForConnectionId,
   waitForData,
   waitForTail,
 	resultParseFailure,
@@ -189,11 +192,46 @@ enum atParseState atParse( unsigned char in )
 					printf ( "Found command %s\n", esp8266atCmd[data_cmd] ); 
 #endif
 					cnt = 0; 
-					atPS = waitForCmdReply;
+					atPS = waitForConnectionId;
 				}
 			}
-		case waitForSocketData:
+			break;
+		case waitForConnectionId:
+#ifdef PARSE_DEBUG_waitForConnectionId
+			printf( "waitForConnectionId %ld %d\n", cnt, in );
+#endif
+			if ( ( in >= '0' ) && ( in <= '9' ) ) { /* Handle id digits */
+				cnt = cnt * 10 + ( in - '0' ); // Use the char counter as data length storage.
+			}
+			else if ( ',' == in ) { /* ',' is the separator between the id digits and length digits */
+#ifdef PARSE_DEBUG_waitForConnectionId
+				printf ( "Reply to channel Id %ld\n", cnt ); /* TODO Just for now the channel id is not save since we will no try to reply anything */
+#endif
+				atPS = waitForLength;
+				cnt = 0; /* Clear the variable for new usage */
+			}
+			else {
+				atPS = resultParseFailure;
+			}
+			break;
 		case waitForLength:
+#ifdef PARSE_DEBUG_waitForLength
+			printf( "waitForLenght %ld %d %d\n", cnt, in, esp8266atCmd[data_cmd][cnt] );
+#endif
+			if ( ( in >= '0' ) && ( in <= '9' ) ) { /* Handle length digits */
+				cnt = cnt * 10 + ( in - '0' ); // Use the char counter as data length storage.
+			}
+			else if ( ':' == in ) { /* ':' is the separator between the length and frame data */
+#ifdef PARSE_DEBUG_waitForLength
+				printf ( "Data to be received %ld\n", cnt );
+#endif
+				atPS = resultOk;
+			}
+			else {
+				atPS = resultParseFailure;
+			}
+			break;
+		case waitForSocketData:
 		case waitForTail:
 		case resultParseFailure:
 		case resultOk:
@@ -209,8 +247,9 @@ boolean sendATcommand( int cmd ) {
 	int res;
 
 	initAtParser( cmd );
-	write_buf( esp8266atCmd[cmd], strlen( esp8266atCmd[cmd] ) );
-	
+	if ( data_cmd != cmd ) { // Don't write out the connect string
+		write_buf( esp8266atCmd[cmd], strlen( esp8266atCmd[cmd] ) );
+	}
 	c = 0;
 	do {
 		res = async_getchar( &c );
@@ -247,8 +286,10 @@ int main ( int argc, char * argv[] )
 	sendATcommand( 2 ); // Connect to as wireless access point.
 	printf( "Testing command 3...\n" );
 	sendATcommand( 3 ); // Allow multiple connections.
-	printf( "Testing command 4...\n" );
+	printf( "Start IP-server ...\n" );
 	sendATcommand( 4 ); // Start a server.
+	printf( "Listen for link data ...\n" );
+	sendATcommand( data_cmd ); // Listen for data.
 
 	// Now wait for incomming data, store the incoming channel
 
