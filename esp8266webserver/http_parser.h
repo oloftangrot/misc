@@ -18,8 +18,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void httpPaserInit( void ) ;
-void httpPaser( unsigned char in );
+void httpParserInit( void ) ;
+void httpParser( unsigned char in );
 
 #ifdef __cplusplus
 }

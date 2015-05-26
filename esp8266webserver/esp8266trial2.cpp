@@ -17,6 +17,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "wap.h"
+#include "http_parser.h"
+
 #undef PARSE_DEBUG_waitForCmdEcho
 #undef PARSE_DEBUG_waitForCmdReply1
 #define PARSE_DEBUG_waitForCmdReply2
@@ -204,8 +206,9 @@ enum atParseState atParse( unsigned char in )
 				cnt = cnt * 10 + ( in - '0' ); // Use the char counter as data length storage.
 			}
 			else if ( ',' == in ) { /* ',' is the separator between the id digits and length digits */
+				atReplyId = cnt;  /* Reuse the variable and save the reply id for later usage */
 #ifdef PARSE_DEBUG_waitForConnectionId
-				printf ( "Reply to channel Id %ld\n", cnt ); /* TODO Just for now the channel id is not save since we will no try to reply anything */
+				printf ( "Reply to channel Id %ld\n", cnt );
 #endif
 				atPS = waitForLength;
 				cnt = 0; /* Clear the variable for new usage */
@@ -225,13 +228,21 @@ enum atParseState atParse( unsigned char in )
 #ifdef PARSE_DEBUG_waitForLength
 				printf ( "Data to be received %ld\n", cnt );
 #endif
-				atPS = resultOk;
+				atPS = waitForSocketData;
 			}
 			else {
 				atPS = resultParseFailure;
 			}
 			break;
 		case waitForSocketData:
+			cnt--;
+			// Here the http_parser should be called... 
+			putc( in, stdout );
+			if ( 0 == cnt ) {
+				// ...and when all data has been received the responce should be sent back!
+				atPS = resultOk;
+			}
+			break;	
 		case waitForTail:
 		case resultParseFailure:
 		case resultOk:
@@ -278,16 +289,19 @@ int main ( int argc, char * argv[] )
 	asyncInit( argv[1] );
 
 	// Initialize the modem, in each step wait for Ok.
-	printf( "Testing command 0...\n" );
+	printf( "Testing AT response...\n" );
 	sendATcommand( 0 ); // First check if there is an AT modem connected.
-	printf( "Testing command 1...\n" );
+	printf( "Set up access mode...\n" );
 	sendATcommand( 1 ); // Set up access mode.
-	printf( "Testing command 2...\n" );
+	printf( "Connect to wireless access point...\n" );
 	sendATcommand( 2 ); // Connect to as wireless access point.
-	printf( "Testing command 3...\n" );
+	printf( "Enable multiple connections...\n" );
 	sendATcommand( 3 ); // Allow multiple connections.
 	printf( "Start IP-server ...\n" );
 	sendATcommand( 4 ); // Start a server.
+
+	httpParserInit();
+
 	printf( "Listen for link data ...\n" );
 	sendATcommand( data_cmd ); // Listen for data.
 
