@@ -14,12 +14,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #ifndef HTTP_PARSER_H
+enum urlResult {
+	url_ok,
+	url_error,
+	url_pending
+};
 #define HTTP_PARSER_H
 #ifdef __cplusplus
 extern "C" {
 #endif
 void httpParserInit( void ) ;
-void httpParser( unsigned char in );
+enum urlResult httpParser( unsigned char in );
 
 #ifdef __cplusplus
 }

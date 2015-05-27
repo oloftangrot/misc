@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include "http_parser.h"
 
+#define DEBUG_waitForGet
+#define DEBUG_waitForCommand
+
 enum parseState {
   waitForGet,
   waitForCommand,
@@ -73,18 +76,20 @@ void httpParserInit( void )
 	cnt = 0;
 }
 
-int in;
-int commandCnt;
-int cmd;
+static int commandCnt;
+static int cmd;
 
-void httpParser( unsigned char in )
+enum urlResult httpParser( unsigned char in )
 {
+	enum urlResult res = url_pending;
   switch ( pS ) {
     case waitForGet:
       if ( in == www[0][cnt] ) {
         cnt++;
         if ( cnt == strlen( www[0] ) ) {
-          printf ("Found GET command!"); 
+#ifdef DEBUG_waitForGet
+          printf ("Found GET command!");
+#endif
           cnt = 0; 
           pS = waitForCommand;
           for ( int i = 0; i < numCommands; i++ ) flags[i] = true;
@@ -99,23 +104,28 @@ void httpParser( unsigned char in )
         if ( flags[i] ) {
           if ( in == commands[ i ][ cnt ] ) {
             if ( ( cnt + 1 ) == strlen( commands[ i ] ) ) {
-              printf( "Found command " ); 
+#ifdef DEBUG_waitForCommand
+              printf( "Found command " );
+#endif
               printf( "%s\n", commands[ i ] ); 
-              cnt = -1; // Let the out of loop cnt++ increment to 0.
-              cmd = i; // Save the found command
+              cnt = -1; /* Let the out of loop cnt++ increment to 0. */
+              cmd = i; /* Save the found command */
               if ( 0 == parseRules[i].numArgs ) {
                 pS = waitForGet;
+								res = url_ok; /* Signal that parsing URL has finnished with a successful command */
               }
               else {
                 pS = waitForArg ;
               }
-              break; // Break out from the for loop
+              break; /* Break out from the for loop */
             }
           }
           else {
             flags[i] = false;
             commandCnt--;
+#ifdef DEBUG_waitForCommand
             printf( "Command ruled out " );
+#endif
             printf( "%d\n", i );
           }
         }
@@ -124,7 +134,10 @@ void httpParser( unsigned char in )
       if ( 0 == commandCnt ) { 
         pS = waitForGet; 
         cnt = 0;
+				res = url_error; /* Signal thar parsing the URL should result with an error message */
+#ifdef DEBUG_waitForCommand
         printf( "Reset command search\n" );
+#endif
       }
       break;
     case waitForTail:
@@ -132,4 +145,5 @@ void httpParser( unsigned char in )
 		case waitForArg:
 			break;
   } /* Switch */
+	return res;
 }

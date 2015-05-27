@@ -25,7 +25,7 @@
 #define PARSE_DEBUG_waitForData
 #define PARSE_DEBUG_waitForLength
 #define PARSE_DEBUG_waitForConnectionId
-
+#define PARSE_DEBUG_waitForSocketData
 #include "../serlink/async_port.h"
 
 #ifndef __cplusplus
@@ -236,11 +236,15 @@ enum atParseState atParse( unsigned char in )
 			break;
 		case waitForSocketData:
 			cnt--;
+			httpParser( in );
 			// Here the http_parser should be called... 
-			putc( in, stdout );
+//			putc( in, stdout );
 			if ( 0 == cnt ) {
 				// ...and when all data has been received the responce should be sent back!
 				atPS = resultOk;
+#ifdef PARSE_DEBUG_waitForSocketData
+				printf( "All data has been recived!\n" );
+#endif
 			}
 			break;	
 		case waitForTail:
