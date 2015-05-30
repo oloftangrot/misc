@@ -21,11 +21,13 @@
 
 #undef PARSE_DEBUG_waitForCmdEcho
 #undef PARSE_DEBUG_waitForCmdReply1
-#define PARSE_DEBUG_waitForCmdReply2
+#undef PARSE_DEBUG_waitForCmdReply2
 #define PARSE_DEBUG_waitForData
 #define PARSE_DEBUG_waitForLength
 #define PARSE_DEBUG_waitForConnectionId
 #define PARSE_DEBUG_waitForSocketData
+#define PARSE_DEBUG_waitForStringEcho
+
 #include "../serlink/async_port.h"
 
 #ifndef __cplusplus
@@ -44,24 +46,28 @@ enum commandPosition { // Positions in the command string array.
 	join_cmd   = 2,
 	ipmux_cmd  = 3,
 	server_cmd = 4,
-	data_cmd   = 5
+	data_cmd   = 5,
+	send_cmd   = 6
 };
 
-char const * const esp8266atCmd[6] = {
+char const * const esp8266atCmd[7] = {
 	"AT\r\n",          /* Test AT modem precense */
 	"AT+CWMODE=3\r\n",  /* Working mode: AP+STA */
 	"AT+CWJAP="ssid","passwd"\r\n",
 	"AT+CIPMUX=1\r\n",	 /* Turn on multiple connection */
 	"AT+CIPSERVER=1,9999\r\n", /* Start the server listening on socket 9999 */
-	"+IPD," /* Some one connected on the socket and sent data. */
+	"+IPD,", /* Some one connected on the socket and sent data. */
+	"AT+CIPSEND="
 };
 
-#define NUM_AT_REPLY (4)
+#define NUM_AT_REPLY (6)
 char const * const atReply[NUM_AT_REPLY] = {
-	"\n\r\nOK\r\n",			/* Response when the command passed */
-	"\nno change\r\n",	/* Typical response to AT+CWMODE=3 */
-	"\nError\r\n",			/* Response when the command failed */
-	"\n\r\nFAIL\r\n"		/* Response when the AT+CWJAP failed */
+	"\n\r\nOK\r\n",			/* Response when the command passed. */
+	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
+	"\nError\r\n",			/* Response when the command failed. */
+	"\n\r\nFAIL\r\n",		/* Response when the AT+CWJAP failed. */
+	"\n> ",							/* Response when AT+CIPSEND waits for socket data. */
+	"\r\nOK\r\n"				/* Tailing response after +IPD data. */
 };
 
 void write_buf( char const * buf, size_t len )
@@ -72,6 +78,7 @@ void write_buf( char const * buf, size_t len )
 }
 
 enum atParseState {
+	waitForStringEcho,
   waitForCmdEcho,
   waitForCmdReply,
   waitForSocketData,
@@ -91,46 +98,72 @@ enum atParseState replyRules[NUM_AT_REPLY] = {
 	resultOk,
 	resultError,
 	resultError,
+	resultOk,
+	resultOk
 };
 
 static size_t cnt;
 static unsigned char currentCmd;
 static unsigned char atReplyId;
+static unsigned char socketPort;
 static unsigned char replyCnt;
 static boolean flags[NUM_AT_REPLY];
+static boolean url_f;
+static char * currentString;
 
 void initAtParser( unsigned char current )
 {
 	cnt = 0;
+	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
+		flags[i] = true;
+	}
 	if ( data_cmd == current ) {
 		atPS = waitForData;
 		// TODO reset any other counters....?
 	}
+	else if ( send_cmd == current ) {
+	}
 	else {
-		for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
-			flags[i] = true;
-		}
 		currentCmd = current;
 		atPS = waitForCmdEcho;
 		replyCnt = NUM_AT_REPLY;
 	}
 }
 
+
 enum atParseState atParse( unsigned char in )
 {
 	boolean oneMatch;
 	switch ( atPS ) {
+		case waitForStringEcho:
+#ifdef PARSE_DEBUG_waitForStringEcho
+			printf( "waitForStringEcho %ld %d %d\n", cnt, in, currentString[cnt] );
+#endif
+			if ( in == currentString[cnt] ) {
+				cnt++;
+				if ( cnt == strlen( currentString ) ) {
+#ifdef PARSE_DEBUG_waitForStringEcho
+					printf ( "String found %s\n", currentString ); 
+#endif
+					cnt = 0; 
+					atPS = resultOk;
+				}
+			}
+			else {
+				atPS = resultError;
+			}
+			break;
 		case waitForCmdEcho:
 #ifdef PARSE_DEBUG_waitForCmdEcho
-			printf( "waitForCmdEcho %ld %d %d\n", cnt, in, esp8266atCmd[currentCmd][cnt] );
+			printf( "waitForCmdEcho %ld %d %d\n", cnt, in, currentString[cnt] );
 #endif
-			if ( ( in == esp8266atCmd[currentCmd][cnt] ) || 
-			     ( ( in == 13 ) && ( esp8266atCmd[currentCmd][cnt] == 10 ) ) )
+			if ( ( in == currentString[cnt] ) || 
+			     ( ( in == 13 ) && ( currentString[cnt] == 10 ) ) )
 			{
 				cnt++;
-				if ( cnt == strlen( esp8266atCmd[currentCmd] ) ) {
+				if ( cnt == strlen( currentString ) ) {
 #ifdef PARSE_DEBUG_waitForCmdEcho
-					printf ( "Found command %s\n", esp8266atCmd[currentCmd] ); 
+					printf ( "Found command %s\n", currentString ); 
 #endif
 					cnt = 0; 
 					atPS = waitForCmdReply;
@@ -206,7 +239,7 @@ enum atParseState atParse( unsigned char in )
 				cnt = cnt * 10 + ( in - '0' ); // Use the char counter as data length storage.
 			}
 			else if ( ',' == in ) { /* ',' is the separator between the id digits and length digits */
-				atReplyId = cnt;  /* Reuse the variable and save the reply id for later usage */
+				socketPort = cnt;  /* Reuse the variable and save the reply id for later usage */
 #ifdef PARSE_DEBUG_waitForConnectionId
 				printf ( "Reply to channel Id %ld\n", cnt );
 #endif
@@ -229,6 +262,7 @@ enum atParseState atParse( unsigned char in )
 				printf ( "Data to be received %ld\n", cnt );
 #endif
 				atPS = waitForSocketData;
+				url_f = false;
 			}
 			else {
 				atPS = resultParseFailure;
@@ -236,12 +270,21 @@ enum atParseState atParse( unsigned char in )
 			break;
 		case waitForSocketData:
 			cnt--;
-			httpParser( in );
-			// Here the http_parser should be called... 
+			if ( false == url_f ) { /* Only try to parse the incoming data for a valid url as long as no match has been made. */
+				if ( url_ok ==	httpParser( in ) ) {  /* The url has been accepted */
+					url_f = true; /* Save the result before reading out the rest of the data */
+				}
+			}
 //			putc( in, stdout );
 			if ( 0 == cnt ) {
+				atPS = waitForCmdReply;  
 				// ...and when all data has been received the responce should be sent back!
-				atPS = resultOk;
+				if ( url_ok ) {
+				//	atPS = resultOk;
+				}
+				else {
+				//	atPS = resultError;
+				}
 #ifdef PARSE_DEBUG_waitForSocketData
 				printf( "All data has been recived!\n" );
 #endif
@@ -256,14 +299,61 @@ enum atParseState atParse( unsigned char in )
 	return atPS;
 }
 
+enum atParseState getAndParse( void )
+{
+	int res;
+	unsigned char c;	
+	enum atParseState parseResult;
+	do {
+		res = async_getchar( &c );
+		if ( res > 0 ) {
+//			putc( c, stdout );
+			parseResult = atParse( c );
+		}
+		else {
+			c = 0;
+		}
+	} while ( ( parseResult != resultOk ) && 
+		  			( parseResult != resultError ) && 
+		  			( parseResult != resultParseFailure ) );
+	return parseResult;
+}
+boolean ipSend( void ) {
+//	enum atParseState parseResult;
+	char buf[16];
+	bzero( buf, 16 );
+	cnt = 0;
+	currentString = (char*) esp8266atCmd[send_cmd];
+	atPS = waitForStringEcho;
+	write_buf( currentString, strlen( currentString ) );
+	if ( resultOk != getAndParse() )
+		return false;
+
+	sprintf( buf, "%d,", socketPort ); // Send port
+	currentString = buf;
+	atPS = waitForStringEcho;
+	write_buf( currentString, strlen( currentString ) );
+	if ( resultOk != getAndParse() )
+		return false;
+
+	sprintf( buf, "%d\r\n", 4 ); // Send data length
+	atPS = waitForStringEcho;
+	write_buf( currentString, strlen( currentString ) );
+	if ( resultOk != getAndParse() )
+		return false;
+
+	return true;
+}
+
 boolean sendATcommand( int cmd ) {
 	unsigned char c;	
 	enum atParseState parseResult;
 	int res;
 
+	currentString = (char *) esp8266atCmd[cmd];
 	initAtParser( cmd );
 	if ( data_cmd != cmd ) { // Don't write out the connect string
-		write_buf( esp8266atCmd[cmd], strlen( esp8266atCmd[cmd] ) );
+		write_buf( currentString, strlen( currentString ) );
 	}
 	c = 0;
 	do {
@@ -285,7 +375,7 @@ int main ( int argc, char * argv[] )
 {
 //	unsigned char chan;	
 
-	if(argc < 2) {
+	if ( argc < 2 ) {
 		fprintf( stderr, "Usage:  %s [devname]\n", argv[0] );
 		return 1;
 	}
@@ -308,9 +398,21 @@ int main ( int argc, char * argv[] )
 
 	printf( "Listen for link data ...\n" );
 	sendATcommand( data_cmd ); // Listen for data.
-
-	// Now wait for incomming data, store the incoming channel
-
+	printf( "Channel in %d\n", atReplyId );
+#if 0
+	for ( ;; ) {
+		int res;
+		unsigned char c;
+		res = async_getchar( &c );
+		if ( res > 0 ) {
+			putc( c, stdout );
+			res = c;
+			printf ( " %d,", res );
+		}
+	}
+#endif
+	printf( "Send back data on the connecting socket...\n" );
+	ipSend();
 	// Now read the incoming data and send it to the http_parser
 	return 0;
 }
