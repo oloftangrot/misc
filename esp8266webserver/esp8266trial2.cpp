@@ -53,7 +53,8 @@ enum commandPosition { // Positions in the command string array.
 	crcr_end	 = 8,
 };
 
-char const *err_msg = "HTTP/1.0 404 Not Found\r\ntest\r\n";  /* Error response */
+char const *err_msg = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response */
+char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
 
 char const * const esp8266atCmd[9] = {
 	"AT\r\n",          /* Test AT modem precense */
@@ -368,7 +369,7 @@ boolean ipSend( void ) {
 	if ( resultOk != getAndParse() )
 		return false;
 
-	sprintf( buf, "%ld", strlen( (char *) err_msg ) ); // Send data length
+	sprintf( buf, "%ld", strlen( (char *) reply_msg ) ); // Send data length
 	atPS = waitForStringEcho;
 	write_buf( currentString, strlen( currentString ) );
 	if ( resultOk != getAndParse() )
@@ -381,7 +382,12 @@ boolean ipSend( void ) {
 		return false;
 
 	printf ( "Sending back data to socket\n" );
-	write_buf( err_msg, strlen( (char *) err_msg ) );
+	write_buf( reply_msg, strlen( (char *) reply_msg ) );
+
+	write_buf( esp8266atCmd[close_cmd], strlen( (char *) esp8266atCmd[close_cmd] ) );
+	sprintf( buf, "%d,", socketPort ); // Send port
+	write_buf( buf, strlen( buf ) );
+	write_buf( "\r\n", 2 );
 
 	return true;
 }
