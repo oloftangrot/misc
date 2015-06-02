@@ -53,10 +53,11 @@ enum commandPosition { // Positions in the command string array.
 	crcr_end	 = 8,
 };
 
-char const *err_msg = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response */
+//char const *err_msg = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response */
+char const *error_msg = "HTTP/1.0 404 Not Found\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 15\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"ERROR\",\"404\"]";  /* Error response */
 char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
 
-char const * const esp8266atCmd[9] = {
+char const * const esp8266atCmd[8] = {
 	"AT\r\n",          /* Test AT modem precense */
 	"AT+CWMODE=3\r\n",  /* Working mode: AP+STA */
 	"AT+CWJAP="ssid","passwd"\r\n",
@@ -65,7 +66,6 @@ char const * const esp8266atCmd[9] = {
 	"+IPD,", /* Some one connected on the socket and sent data. */
 	"AT+CIPSEND=",
 	"AT+CIPCLOSE=",
-	"\r\r"
 };
 
 #define NUM_AT_REPLY (6)
@@ -164,12 +164,12 @@ enum atParseState atParse( unsigned char in )
 			break;
 		case waitForCrCr:
 #ifdef PARSE_DEBUG_waitForCrCr
-			printf( "waitForCrCr %ld %d %d\n", cnt, in, currentString[cnt] );
+			printf( "waitForCrCr %ld %d\n", cnt, in );
 #endif
-			if ( in == currentString[cnt] ) 
+			if ( in == '\r' ) 
 			{
 				cnt++;
-				if ( cnt == strlen( currentString ) ) {
+				if ( 2 == cnt ) {
 #ifdef PARSE_DEBUG_waitForCrCr
 					printf ( "CRCR line end found %s\n", currentString ); 
 #endif
@@ -369,7 +369,7 @@ boolean ipSend( void ) {
 	if ( resultOk != getAndParse() )
 		return false;
 
-	sprintf( buf, "%ld", strlen( (char *) reply_msg ) ); // Send data length
+	sprintf( buf, "%ld", strlen( (char *) error_msg ) ); // Send data length
 	atPS = waitForStringEcho;
 	write_buf( currentString, strlen( currentString ) );
 	if ( resultOk != getAndParse() )
@@ -382,7 +382,7 @@ boolean ipSend( void ) {
 		return false;
 
 	printf ( "Sending back data to socket\n" );
-	write_buf( reply_msg, strlen( (char *) reply_msg ) );
+	write_buf( error_msg, strlen( (char *) error_msg ) );
 
 	write_buf( esp8266atCmd[close_cmd], strlen( (char *) esp8266atCmd[close_cmd] ) );
 	sprintf( buf, "%d,", socketPort ); // Send port
@@ -426,7 +426,7 @@ int main ( int argc, char * argv[] )
 		fprintf( stderr, "Usage:  %s [devname]\n", argv[0] );
 		return 1;
 	}
-	printf ( "%s \n", esp8266atCmd[2] );
+//	printf ( "%s \n", esp8266atCmd[2] );
 	asyncInit( argv[1] );
 
 	// Initialize the modem, in each step wait for Ok.
