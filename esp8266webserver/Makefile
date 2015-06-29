@@ -14,17 +14,21 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-all: esp8266trial1 esp8266trial2
+all: esp8266trial1 esp8266trial2 esp8266trial2-1
 
-esp8266trial1: esp8266trial1.c http_parser.c
-	gcc -Wall -std=c99 -o $@ $^ ../serlink/posix_async_port.c 
+esp8266trial1: esp8266trial1.c http_parser.c posix_async_port.c
+	gcc -Wall -std=c99 -o $@ $^  
 
-esp8266trial2: esp8266trial2.cpp http_parser.c wap.h
-	g++ -g -Wall -o $@ $^ ../serlink/posix_async_port.c 
+esp8266trial2: esp8266trial2.cpp http_parser.c wap.h posix_async_port.c 
+	g++ -g -Wall -o $@ $^ 
+
+esp8266trial2-1: esp8266trial2.cpp http_parser.c wap.h serial.c 
+	g++ -g -Wall -o $@ $^ 
 	
 clean:
 	rm esp8266trial1 
 	rm esp8266trial2
+	rm esp8266trial2-1
 	rm *.o
 
 

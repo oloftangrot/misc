@@ -1,0 +1,23 @@
+Fail 1
+
+xwaitForStringEcho 0 76 65 -> "L"
+
+Fail 2
+xwaitForStringEcho 0 76 65 -> "L"  Link up ??? Link down???
+
+Success
+Send back data on the connecting socket...
+xwaitForStringEcho 0 65 65
+waitForStringEcho 1 84 84
+waitForStringEcho 2 43 43
+waitForStringEcho 3 67 67
+waitForStringEcho 4 73 73
+waitForStringEcho 5 80 80
+waitForStringEcho 6 83 83
+waitForStringEcho 7 69 69
+waitForStringEcho 8 78 78
+waitForStringEcho 9 68 68
+waitForStringEcho 10 61 61
+
+
+
