@@ -60,9 +60,9 @@ char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-H
 char const * const esp8266atCmd[8] = {
 	"AT",          /* Test AT modem precense */
 	"AT+CWMODE=3",  /* Working mode: AP+STA */
-	"AT+CWJAP="ssid","passwd"\r\n",
-	"AT+CIPMUX=1\r\n",	 /* Turn on multiple connection */
-	"AT+CIPSERVER=1,9999\r\n", /* Start the server listening on socket 9999 */
+	"AT+CWJAP="ssid","passwd
+	"AT+CIPMUX=1",	 /* Turn on multiple connection */
+	"AT+CIPSERVER=1,9999", /* Start the server listening on socket 9999 */
 	"+IPD,", /* Some one connected on the socket and sent data. */
 	"AT+CIPSEND=",
 	"AT+CIPCLOSE=",
@@ -88,7 +88,7 @@ void write_buf( char const * buf, size_t len )
 enum atParseState {
 	waitForStringEcho,
 	waitForCrCr,
-  waitForCmdEcho,
+//  waitForCmdEcho,
   waitForCmdReply,
   waitForSocketData,
   waitForLength,
@@ -134,7 +134,7 @@ void initAtParser( unsigned char current )
 	}
 	else {
 		currentCmd = current;
-		atPS = waitForCmdEcho;
+//		atPS = waitForCmdEcho;
 		replyCnt = NUM_AT_REPLY;
 	}
 }
@@ -143,6 +143,7 @@ enum atParseState atParse( unsigned char in )
 {
 	boolean oneMatch;
 	switch ( atPS ) {
+#if 1
 		case waitForStringEcho:
 #ifdef PARSE_DEBUG_waitForStringEcho
 			printf( "waitForStringEcho %ld %d %d\n", cnt, in, currentString[cnt] );
@@ -161,6 +162,7 @@ enum atParseState atParse( unsigned char in )
 				atPS = resultError;
 			}
 			break;
+#endif
 		case waitForCrCr:
 #ifdef PARSE_DEBUG_waitForCrCr
 			printf( "waitForCrCr %ld %d\n", cnt, in );
@@ -180,6 +182,7 @@ enum atParseState atParse( unsigned char in )
 				atPS = resultParseFailure;
 			}
 			break;
+#if 0
 		case waitForCmdEcho:
 #ifdef PARSE_DEBUG_waitForCmdEcho
 			printf( "waitForCmdEcho %ld %d %d\n", cnt, in, currentString[cnt] );
@@ -200,6 +203,7 @@ enum atParseState atParse( unsigned char in )
 				atPS = resultParseFailure;
 			}
 			break;
+#endif
 		case waitForCmdReply:
 #ifdef PARSE_DEBUG_waitForCmdReply1
 			printf( "waitForCmdReply %ld %d\n", cnt, in );
@@ -417,6 +421,33 @@ boolean ipSend( void ) {
 	return true;
 }
 
+boolean waitForServerConnection( void ) {
+	unsigned char c;	
+	enum atParseState parseResult;
+	int res;
+
+	cnt = 0;
+	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
+		flags[i] = true;
+	}
+	atPS = waitForData;
+	currentString = (char *) esp8266atCmd[ data_cmd ];
+	c = 0;
+	do {
+		res = async_getchar( &c );
+		if ( res > 0 ) {
+//			putc( c, stdout );
+			parseResult = atParse( c );
+		}
+		else {
+			c = 0;
+		}
+	} while ( ( parseResult != resultOk ) && 
+		  			( parseResult != resultError ) && 
+		  			( parseResult != resultParseFailure ) );
+	return ( resultOk == parseResult );
+}
+
 void readOutInBuffer( void )
 {
 	unsigned char c;
@@ -449,7 +480,7 @@ boolean writeCommandLineEnd( void )
 	}
 	return true;
 }
-
+#if 0
 boolean sendATcommand( int cmd ) {
 	unsigned char c;	
 	enum atParseState parseResult;
@@ -475,6 +506,7 @@ boolean sendATcommand( int cmd ) {
 		  			( parseResult != resultParseFailure ) );
 	return ( resultOk == parseResult );
 }
+#endif
 
 int main ( int argc, char * argv[] )
 {
@@ -489,7 +521,7 @@ int main ( int argc, char * argv[] )
 	// Initialize the modem, in each step wait for Ok.
 	printf( "Testing AT response..." );
 //	sendATcommand( 0 ); // First check if there is an AT modem connected.
-	if ( stringSend( (char *) esp8266atCmd[0] ) ) printf ( " Command OK\n" );
+	if ( stringSend( (char *) esp8266atCmd[ attest_cmd ] ) ) printf ( " Command OK\n" );
   if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
 	printf( "Set up access mode... " );
 //	sendATcommand( 1 ); // Set up access mode.
@@ -512,7 +544,8 @@ int main ( int argc, char * argv[] )
 
 	for ( ;; ) {
 		printf( "Listen for link data ...\n" );
-		sendATcommand( data_cmd ); // Listen for data.
+//		sendATcommand( data_cmd ); // Listen for data.
+		waitForServerConnection();
 		printf( "Read out in buffer...\n" );
 		readOutInBuffer();
 		printf( "Send back data on the connecting socket...\n" );
