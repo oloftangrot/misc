@@ -352,7 +352,9 @@ enum atParseState getAndParse( void )
 		  			( parseResult != resultParseFailure ) );
 	return parseResult;
 }
-
+/*
+* Send a stirng character by chararter and check the echo after each one.
+*/
 boolean stringSend( char * str ) {
 	boolean res = true;
 	unsigned char c;
@@ -368,6 +370,8 @@ boolean stringSend( char * str ) {
 		}
 		if ( c != *str ) {
 			printf( "Echo failed w: %d r:%d @%d !\n", *str, c, i );
+			res = false;
+			break;
 		}
 		str++;
 	}
@@ -449,7 +453,10 @@ boolean ipSend( void ) {
 	readOutInBuffer();
 	return true;
 }
-
+/*
+* Set up the stream parser to wait for the string received when a client connects 
+* and sends data.
+*/
 boolean waitForServerConnection( void ) {
 	unsigned char c;	
 	enum atParseState parseResult;
@@ -494,7 +501,10 @@ void readOutInBuffer( void )
 		}
 	} while ( emptyReads );
 }
-
+/*
+* Write the a command line end the esp8266 modem expects, then wait for any of the
+* expected responses.
+*/
 boolean writeCommandLineEnd( void )
 {
 	cnt = 0;
