@@ -60,7 +60,7 @@ char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-H
 char const * const esp8266atCmd[8] = {
 	"AT",          /* Test AT modem precense */
 	"AT+CWMODE=3",  /* Working mode: AP+STA */
-	"AT+CWJAP="ssid","passwd
+	"AT+CWJAP="ssid","passwd,
 	"AT+CIPMUX=1",	 /* Turn on multiple connection */
 	"AT+CIPSERVER=1,9999", /* Start the server listening on socket 9999 */
 	"+IPD,", /* Some one connected on the socket and sent data. */
@@ -68,11 +68,12 @@ char const * const esp8266atCmd[8] = {
 	"AT+CIPCLOSE=",
 };
 
-#define NUM_AT_REPLY (6)
+#define NUM_AT_REPLY (7)
 char const * const atReply[NUM_AT_REPLY] = {
 	"\n\r\nOK\r\n",			/* Response when the command passed. */
 	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
 	"\nError\r\n",			/* Response when the command failed. */
+	"\n\r\nERROR\r\n",			/* Response when the command failed. */
 	"\n\r\nFAIL\r\n",		/* Response when the AT+CWJAP failed. */
 	"\n> ",							/* Response when AT+CIPSEND waits for socket data. */
 	"\r\nOK\r\n"				/* Tailing response after +IPD data. */
@@ -107,6 +108,7 @@ enum atParseState atPS;
 enum atParseState replyRules[NUM_AT_REPLY] = {
 	resultOk,
 	resultOk,
+	resultError,
 	resultError,
 	resultError,
 	resultOk,
@@ -233,7 +235,7 @@ enum atParseState atParse( unsigned char in )
 						flags[i] = false;
 						replyCnt--;
 #ifdef PARSE_DEBUG_waitForCmdReply2
-						printf( "Reply ruled out %d\n", i );
+						printf( "Ruled out reply: %d\n", i );
 #endif
 					}
 				}
