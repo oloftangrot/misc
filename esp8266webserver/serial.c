@@ -36,8 +36,9 @@ int open_port(void)
 	else {
 		fcntl(fd, F_SETFL, 0);
 
-    tcgetattr(fd, &options);	/* get the current options */
+    tcgetattr(fd, &options );	/* get the current options */
 
+		cfsetspeed( &options, 115200 );
     /* set raw input, 1 second timeout */
 		options.c_iflag &= ~(IGNBRK | INLCR | IGNCR | ICRNL | IXON | IXOFF | IXANY | IMAXBEL | ISTRIP); // turn these off
     options.c_cflag     |= (CLOCAL | CREAD);

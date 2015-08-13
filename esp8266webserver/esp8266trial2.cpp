@@ -30,7 +30,6 @@
 #undef PARSE_DEBUG_waitForCrCr
 
 #include "async_port.h"
-void readOutInBuffer( void );
 
 #ifndef __cplusplus
 typedef unsigned char boolean;
@@ -41,6 +40,9 @@ enum {
 #else
 typedef bool boolean; // Use the c++ type
 #endif
+
+void readOutInBuffer( void );
+boolean waitForReply( void );
 
 boolean parse_debug = false;
 
@@ -70,7 +72,7 @@ char const * const esp8266atCmd[8] = {
 	"AT+CIPCLOSE=",
 };
 
-#define NUM_AT_REPLY (8)
+#define NUM_AT_REPLY (9)
 char const * const atReply[NUM_AT_REPLY] = {
 	"\n\r\nOK\r\n",			/* Response when the command passed. */
 	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
@@ -79,7 +81,8 @@ char const * const atReply[NUM_AT_REPLY] = {
 	"\n\r\nFAIL\r\n",		/* Response when the AT+CWJAP failed. */
 	"\n> ",							/* Response when AT+CIPSEND waits for socket data. */
 	"\r\nOK\r\n",				/* Tailing response after +IPD data. */
-	"SEND OK\r\n"				/* Response when AT+CIPSEND has received all socket data. */
+	"\r\r\nSEND OK\r\n",				/* Response when AT+CIPSEND has received all socket data. */
+  "\r\r\nbusy s...\r\n\r\nSEND OK\r\nUnlink\r\n" /* Alternate response when AT+CIPSEND has received all socket data. */
 };
 
 boolean writeCommandLineEnd( void );
@@ -114,6 +117,7 @@ enum atParseState replyRules[NUM_AT_REPLY] = {
 	resultError,
 	resultError,
 	resultError,
+	resultOk,
 	resultOk,
 	resultOk,
 	resultOk
@@ -214,7 +218,16 @@ enum atParseState atParse( unsigned char in )
 #endif
 		case waitForCmdReply:
 #ifdef PARSE_DEBUG_waitForCmdReply1
-			if ( parse_debug ) printf( "waitForCmdReply %ld %d\n", cnt, in );
+			if ( parse_debug ) {
+				printf( "waitForCmdReply %ld %d ", cnt, in );
+				if ( in > 32 ) 
+					putc( in, stdout );
+				else {
+					putc( '^', stdout );
+					putc( 64 + in, stdout );
+				}
+				printf( "\n" );
+			}
 #endif
 			oneMatch = false;
 			for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
@@ -417,7 +430,8 @@ boolean ipSend( void ) {
 	if ( stringSend( (char*) error_msg ), false ) printf( "Ok\n" ) ;
 
   parse_debug = true;
-
+	if ( waitForReply() ) printf ( "Data sent Ok\n" );
+	else printf ( "Data send error!\n" );
 	// Here there should be some code that reads out the 'SEND OK' response from the modem before closing the socket...
   parse_debug = false;
 
@@ -429,7 +443,7 @@ boolean ipSend( void ) {
 	}
   if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
 
-	readOutInBuffer();
+//	readOutInBuffer();
 	return true;
 }
 /*
@@ -473,7 +487,12 @@ void readOutInBuffer( void )
 	do {
 		res = async_getchar( &c );
 		if ( res > 0 ) {
-			putc( c, stdout );
+			if ( c > 32 ) 
+				putc( c, stdout );
+			else {
+				putc( '^', stdout );
+				putc( 64 + c, stdout );
+			}
 		}
 		else {
 			emptyReads--;
@@ -498,6 +517,22 @@ boolean writeCommandLineEnd( void )
 	}
 	return true;
 }
+
+boolean waitForReply( void )
+{
+	cnt = 0;
+	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
+		flags[i] = true;
+	}
+	atPS = waitForCmdReply;
+	write_buf( "\r\n", 2 );
+	if ( resultOk != getAndParse() ){
+		printf ( "Error waitForReply!\n" );
+		return false;
+	}
+	return true;
+}
+
 #if 0
 boolean sendATcommand( int cmd ) {
 	unsigned char c;	
@@ -566,8 +601,8 @@ int main ( int argc, char * argv[] )
 		printf( "Listen for link data ...\n" );
 //		sendATcommand( data_cmd ); // Listen for data.
 		waitForServerConnection();
-		printf( "Read out in buffer...\n" );
-		readOutInBuffer();
+//		printf( "Read out in buffer...\n" );
+//		readOutInBuffer();
 		printf( "Send back data on the connecting socket...\n" );
 		ipSend();
 	}
