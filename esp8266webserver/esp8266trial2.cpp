@@ -27,7 +27,7 @@
 #define PARSE_DEBUG_waitForConnectionId
 #undef PARSE_DEBUG_waitForSocketData
 #define PARSE_DEBUG_waitForStringEcho
-#undef PARSE_DEBUG_waitForCrCr
+#define PARSE_DEBUG_waitForCrCr
 
 #include "async_port.h"
 
@@ -47,21 +47,23 @@ boolean waitForReply( void );
 boolean parse_debug = false;
 
 enum commandPosition { // Positions in the command string array.
-	attest_cmd = 0,
-	mode_cmd   = 1,
-	join_cmd   = 2,
-	ipmux_cmd  = 3,
-	server_cmd = 4,
-	data_cmd   = 5,
-	send_cmd   = 6,
-	close_cmd  = 7
+	noecho_cmd = 0,
+	attest_cmd = 1,
+	mode_cmd   = 2,
+	join_cmd   = 3,
+	ipmux_cmd  = 4,
+	server_cmd = 5,
+	data_cmd   = 6,
+	send_cmd   = 7,
+	close_cmd  = 8
 };
 
 //char const *err_msg = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response */
 char const *error_msg = "HTTP/1.0 404 Not Found\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 15\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"ERROR\",\"404\"]";  /* Error response */
 char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
 
-char const * const esp8266atCmd[8] = {
+char const * const esp8266atCmd[9] = {
+	"ATE0",				 /* Disable character echo */	
 	"AT",          /* Test AT modem precense */
 	"AT+CWMODE=3",  /* Working mode: AP+STA */
 	"AT+CWJAP="ssid","passwd,
@@ -83,6 +85,7 @@ char const * const atReply[NUM_AT_REPLY] = {
 	"\r\nOK\r\n",				/* Tailing response after +IPD data. */
 	"\r\r\nSEND OK\r\n",				/* Response when AT+CIPSEND has received all socket data. */
   "\r\r\nbusy s...\r\n\r\nSEND OK\r\nUnlink\r\n" /* Alternate response when AT+CIPSEND has received all socket data. */
+//"\r\r\nbusy s...\r\n\r\nSEND OK\r\nLink\r\n" /* Alternate response when AT+CIPSEND has received all socket data, but favicon is to be fetched.... */
 };
 
 boolean writeCommandLineEnd( void );
@@ -179,7 +182,7 @@ enum atParseState atParse( unsigned char in )
 #ifdef PARSE_DEBUG_waitForCrCr
 			if ( parse_debug ) printf( "waitForCrCr %ld %d\n", cnt, in );
 #endif
-			if ( in == '\r' ) 
+			if ( ( in == '\r' ) ) 
 			{
 				cnt++;
 				if ( 2 == cnt ) {
@@ -372,9 +375,22 @@ enum atParseState getAndParse( void )
 	return parseResult;
 }
 /*
-* Send a stirng character by chararter and check the echo after each one.
+* Send a string character by character without checking any echo.
 */
 boolean stringSend( char * str, boolean check_LF_echo = true ) {
+	boolean res = true;
+	unsigned int len = strlen( str );
+	printf ( "Length %d ", len );
+	for ( unsigned int i = 0; i < len; i++ ) {
+		async_putchar( *str );
+		str++;
+	}
+	return res;
+}
+/*
+* Send a stirng character by chararter and check the echo after each one.
+*/
+boolean stringSend_check_echo( char * str, boolean check_LF_echo = true ) {
 	boolean res = true;
 	unsigned char c;
 	unsigned int len = strlen( str );
@@ -390,6 +406,7 @@ boolean stringSend( char * str, boolean check_LF_echo = true ) {
 		else if ( c != *str ) { 
 			printf( "Echo failed w: %d r:%d @%d !\n", *str, c, i );
 			res = false;
+			readOutInBuffer();
 			break;
 		}
 		str++;
@@ -434,7 +451,7 @@ boolean ipSend( void ) {
 	else printf ( "Data send error!\n" );
 	// Here there should be some code that reads out the 'SEND OK' response from the modem before closing the socket...
   parse_debug = false;
-
+#if 0
 	printf( "Close command: " ) ; 
 	if ( stringSend( (char*) esp8266atCmd[ close_cmd ] ) ) printf( "Ok\n" ) ;
 	else {
@@ -442,7 +459,7 @@ boolean ipSend( void ) {
 //		return false; // Temporary fix...
 	}
   if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
-
+#endif
 //	readOutInBuffer();
 	return true;
 }
@@ -518,6 +535,25 @@ boolean writeCommandLineEnd( void )
 	return true;
 }
 
+/*
+* Write the a command line end the esp8266 modem expects, then wait for any of the
+* expected responses.
+*/
+boolean writeCommandLineEndNoEcho( void )
+{
+	cnt = 0;
+	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
+		flags[i] = true;
+	}
+	atPS = waitForCmdReply;
+	write_buf( "\r\n", 2 );
+	if ( resultOk != getAndParse() ){
+		printf ( "Error writeCommandLineEndNoEcho!\n" );
+		return false;
+	}
+	return true;
+}
+
 boolean waitForReply( void )
 {
 	cnt = 0;
@@ -563,7 +599,7 @@ boolean sendATcommand( int cmd ) {
 
 int main ( int argc, char * argv[] )
 {
-//	unsigned char chan;	
+	unsigned char c;	
 
 	if ( argc < 2 ) {
 		fprintf( stderr, "Usage:  %s [devname]\n", argv[0] );
@@ -574,20 +610,25 @@ int main ( int argc, char * argv[] )
 //	printf ( "Testing loop back of the 'error message' reply.	\n" );
 //  stringSend( (char *) error_msg ); 
 	// Initialize the modem, in each step wait for Ok.
+	parse_debug = true;
+	printf( "Deactivating echo..." );
+	if ( stringSend( (char *) esp8266atCmd[ noecho_cmd ] ) ) printf ( " Command OK\n" );
+	for ( unsigned int i = 0; i < strlen( esp8266atCmd[ noecho_cmd ] ); i++ ) async_getchar( &c );
+ 	if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+
 	printf( "Testing AT response..." );
-//	sendATcommand( 0 ); // First check if there is an AT modem connected .
 	if ( stringSend( (char *) esp8266atCmd[ attest_cmd ] ) ) printf ( " Command OK\n" );
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
+
 	printf( "Set up access mode... " );
-//	sendATcommand( 1 ); // Set up access mode.
 	if ( stringSend( (char *) esp8266atCmd[ mode_cmd] ) ) printf ( " Command OK\n" );
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
+
 	printf( "Connect to wireless access point..." );
-//	sendATcommand( 2 ); // Connect to as wireless access point.
 	if ( stringSend( (char *) esp8266atCmd[ join_cmd ] ) ) printf ( " Command OK\n" );
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
+
 	printf( "Enable multiple connections..." );
-//	sendATcommand( 3 ); // Allow multiple connections.
 	if ( stringSend( (char *) esp8266atCmd[ ipmux_cmd ] ) ) printf ( " Command OK\n" );
   if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
 	printf( "Start IP-server ..." );
