@@ -74,10 +74,11 @@ char const * const esp8266atCmd[9] = {
 	"AT+CIPCLOSE=",
 };
 
-#define NUM_AT_REPLY (9)
+#define NUM_AT_REPLY (10)
 char const * const atReply[NUM_AT_REPLY] = {
 	"\n\r\nOK\r\n",			/* Response when the command passed. */
 	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
+	"no change\r\n",	/* Typical response to AT+CWMODE=3. */
 	"\nError\r\n",			/* Response when the command failed. */
 	"\n\r\nERROR\r\n",	/* Response when the command failed. */
 	"\n\r\nFAIL\r\n",		/* Response when the AT+CWJAP failed. */
@@ -115,6 +116,7 @@ enum atParseState {
 enum atParseState atPS;
 
 enum atParseState replyRules[NUM_AT_REPLY] = {
+	resultOk,
 	resultOk,
 	resultOk,
 	resultError,
@@ -377,7 +379,7 @@ enum atParseState getAndParse( void )
 /*
 * Send a string character by character without checking any echo.
 */
-boolean stringSend( char * str, boolean check_LF_echo = true ) {
+boolean stringSendNoEcho( char * str ) {
 	boolean res = true;
 	unsigned int len = strlen( str );
 	printf ( "Length %d ", len );
@@ -422,21 +424,21 @@ boolean ipSend( void ) {
 		flags[i] = true;
 	}
 	printf( "Send command: " ) ;
-	if ( stringSend( (char*) esp8266atCmd[send_cmd] ) ) printf( "Ok\n" );
+	if ( stringSendNoEcho( (char*) esp8266atCmd[send_cmd] ) ) printf( "Ok\n" );
 	else {
 		printf ( "Error!\n" );
 		return false;
 	}
 	sprintf( buf, "%d,", socketPort ); // Send port
 	printf( "Socket port: " ) ;
-	if ( stringSend( (char*) buf ) ) printf( "Ok\n" ) ;
+	if ( stringSendNoEcho( (char*) buf ) ) printf( "Ok\n" ) ;
 	else {
 		printf ( "Error!\n" );
 		return false;
 	}
 	sprintf( buf, "%ld", strlen( (char *) error_msg ) ); // Send data length
 	printf( "Data length: " ) ;
-	if ( stringSend( (char*) buf ) ) printf( "Ok\n" ) ;
+	if ( stringSendNoEcho( (char*) buf ) ) printf( "Ok\n" ) ;
 	else {
 		printf ( "Error!\n" );
 		return false;
@@ -444,7 +446,7 @@ boolean ipSend( void ) {
   if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" ) ;
 
 	printf ( "Sending back data to socket\n" );
-	if ( stringSend( (char*) error_msg ), false ) printf( "Ok\n" ) ;
+	if ( stringSendNoEcho( (char*) error_msg ), false ) printf( "Ok\n" ) ;
 
   parse_debug = true;
 	if ( waitForReply() ) printf ( "Data sent Ok\n" );
@@ -453,7 +455,7 @@ boolean ipSend( void ) {
   parse_debug = false;
 #if 0
 	printf( "Close command: " ) ; 
-	if ( stringSend( (char*) esp8266atCmd[ close_cmd ] ) ) printf( "Ok\n" ) ;
+	if ( stringSendNoEcho( (char*) esp8266atCmd[ close_cmd ] ) ) printf( "Ok\n" ) ;
 	else {
 		printf ( "Error!\n" );
 //		return false; // Temporary fix...
@@ -608,33 +610,33 @@ int main ( int argc, char * argv[] )
 //	printf ( "%s \n", esp8266atCmd[2] );
 	asyncInit( argv[1] );
 //	printf ( "Testing loop back of the 'error message' reply.	\n" );
-//  stringSend( (char *) error_msg ); 
+//  stringSendNoEcho( (char *) error_msg ); 
 	// Initialize the modem, in each step wait for Ok.
-	parse_debug = true;
+	parse_debug = false;
 	printf( "Deactivating echo..." );
-	if ( stringSend( (char *) esp8266atCmd[ noecho_cmd ] ) ) printf ( " Command OK\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ noecho_cmd ] ) ) printf ( " Command OK\n" );
 	for ( unsigned int i = 0; i < strlen( esp8266atCmd[ noecho_cmd ] ); i++ ) async_getchar( &c );
  	if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
 
 	printf( "Testing AT response..." );
-	if ( stringSend( (char *) esp8266atCmd[ attest_cmd ] ) ) printf ( " Command OK\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ attest_cmd ] ) ) printf ( " Command OK\n" );
   if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
 
 	printf( "Set up access mode... " );
-	if ( stringSend( (char *) esp8266atCmd[ mode_cmd] ) ) printf ( " Command OK\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ mode_cmd] ) ) printf ( " Command OK\n" );
   if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
 
 	printf( "Connect to wireless access point..." );
-	if ( stringSend( (char *) esp8266atCmd[ join_cmd ] ) ) printf ( " Command OK\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ join_cmd ] ) ) printf ( " Command OK\n" );
   if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
 
 	printf( "Enable multiple connections..." );
-	if ( stringSend( (char *) esp8266atCmd[ ipmux_cmd ] ) ) printf ( " Command OK\n" );
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ ipmux_cmd ] ) ) printf ( " Command OK\n" );
+  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
 	printf( "Start IP-server ..." );
 //	sendATcommand( 4 ); // Start a server.
-	if ( stringSend( (char *) esp8266atCmd[ server_cmd ] ) ) printf ( " Command OK\n" );
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" );
+	if ( stringSendNoEcho( (char *) esp8266atCmd[ server_cmd ] ) ) printf ( " Command OK\n" );
+  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" );
 
 	httpParserInit();
 
