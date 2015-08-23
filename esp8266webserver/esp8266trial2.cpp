@@ -43,6 +43,7 @@ typedef bool boolean; // Use the c++ type
 
 void readOutInBuffer( void );
 boolean waitForReply( void );
+boolean writeCommandLineEndNoEcho( void );
 
 boolean parse_debug = false;
 
@@ -65,7 +66,7 @@ char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-H
 char const * const esp8266atCmd[9] = {
 	"ATE0",				 /* Disable character echo */	
 	"AT",          /* Test AT modem precense */
-	"AT+CWMODE=3",  /* Working mode: AP+STA */
+	"AT+CWMODE=1",  /* Working mode: 1 = STA, 2 = AP, 3 = AP+STA */
 	"AT+CWJAP="ssid","passwd,
 	"AT+CIPMUX=1",	 /* Turn on multiple connection */
 	"AT+CIPSERVER=1,9999", /* Start the server listening on socket 9999 */
@@ -76,17 +77,18 @@ char const * const esp8266atCmd[9] = {
 
 #define NUM_AT_REPLY (10)
 char const * const atReply[NUM_AT_REPLY] = {
-	"\n\r\nOK\r\n",			/* Response when the command passed. */
-	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
-	"no change\r\n",	/* Typical response to AT+CWMODE=3. */
 	"\nError\r\n",			/* Response when the command failed. */
 	"\n\r\nERROR\r\n",	/* Response when the command failed. */
 	"\n\r\nFAIL\r\n",		/* Response when the AT+CWJAP failed. */
-	"\n> ",							/* Response when AT+CIPSEND waits for socket data. */
+	"\n\r\nOK\r\n",			/* Response when the command passed. */
+	"\nno change\r\n",	/* Typical response to AT+CWMODE=3. */
+	"no change\r\n",	/* Typical response to AT+CWMODE=3. */
 	"\r\nOK\r\n",				/* Tailing response after +IPD data. */
 	"\r\r\nSEND OK\r\n",				/* Response when AT+CIPSEND has received all socket data. */
-  "\r\r\nbusy s...\r\n\r\nSEND OK\r\nUnlink\r\n" /* Alternate response when AT+CIPSEND has received all socket data. */
-//"\r\r\nbusy s...\r\n\r\nSEND OK\r\nLink\r\n" /* Alternate response when AT+CIPSEND has received all socket data, but favicon is to be fetched.... */
+  "\r\nbusy s...\r\n\r\nSEND OK\r\n", /* Alternate response when AT+CIPSEND has received all socket data. */
+	"\r\r\nbusy s...\r\nLink\r\n\r\nSEND OK\r\n" /* Alternate response when AT+CIPSEND has received all socket data, but favicon is to be fetched.... */
+//  "\r\r\nbusy s...\r\n\r\nSEND OK\r\nUnlink\r\n" /* Alternate response when AT+CIPSEND has received all socket data. */
+
 };
 
 boolean writeCommandLineEnd( void );
@@ -116,12 +118,12 @@ enum atParseState {
 enum atParseState atPS;
 
 enum atParseState replyRules[NUM_AT_REPLY] = {
-	resultOk,
-	resultOk,
-	resultOk,
 	resultError,
 	resultError,
 	resultError,
+	resultOk,
+	resultOk,
+	resultOk,
 	resultOk,
 	resultOk,
 	resultOk,
@@ -355,6 +357,67 @@ enum atParseState atParse( unsigned char in )
 	} /* Switch */
 	return atPS;
 }
+/*
+** Write the command line end then wait for the string "> " that indicates
+** that the modem is ready to receive socket data.
+*/
+enum atParseState waitFor_GT_SP_( void )
+{
+	int res, count = 0;
+	unsigned char c;	
+	enum atParseState parseResult = waitForTail; // Assign something that won't terminate the loop if the first read fails.
+	write_buf( "\r\n", 2 );
+	do {
+		res = async_getchar( &c );
+		if ( res > 0 ) {
+//			putc( c, stdout );
+			if ( ( 0 == count ) && ( '>' == c ) ) {
+				count++;
+			}
+			else if ( 1 == count ) {
+				if ( ' ' == c ) { 
+					parseResult = resultOk;
+					printf ( "Found the promt indicating it is now Ok to send the socket data\n" );
+				}
+				else {
+					parseResult = resultError;
+					printf ( "Unexpected response from the modem when waiting for data promt!\n" );
+				}
+			}
+		}
+	} while ( ( parseResult != resultOk ) && 
+		  			( parseResult != resultError ) );
+	return parseResult;
+}
+
+enum atParseState waitForSEND_OK( void )
+{
+	const char * sendOk = "SEND OK\r\n";
+	int res;
+	unsigned int count = 0;
+	unsigned char c;	
+	enum atParseState parseResult = waitForTail; // Assign something that won't terminate the loop if the first read fails.
+	write_buf( "\r\n", 2 );
+	do {
+		res = async_getchar( &c );
+		if ( res > 0 ) {
+			putc( c, stdout );
+			if ( sendOk[ count ] == c ) {
+				count++;
+				if ( count == strlen( sendOk ) ) {
+					printf ( "Found the promt indicating that the data has been sent.\n" );
+					parseResult = resultOk;
+				}
+			}
+			else if ( count > 0 ) {
+				parseResult = resultError;
+				printf ( "Unexpected response from the modem when waiting for data to become sent!\n" );
+			}
+		}
+	} while ( ( parseResult != resultOk ) && 
+		  			( parseResult != resultError ) );
+	return parseResult;
+}
 
 enum atParseState getAndParse( void )
 {
@@ -443,14 +506,17 @@ boolean ipSend( void ) {
 		printf ( "Error!\n" );
 		return false;
 	}
-  if ( writeCommandLineEnd() ) printf ( " Command responce Ok\n" ) ;
+  parse_debug = true;
+	waitFor_GT_SP_();
+//  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" ) ;
 
 	printf ( "Sending back data to socket\n" );
 	if ( stringSendNoEcho( (char*) error_msg ), false ) printf( "Ok\n" ) ;
 
-  parse_debug = true;
-	if ( waitForReply() ) printf ( "Data sent Ok\n" );
-	else printf ( "Data send error!\n" );
+	waitForSEND_OK();
+
+//	if ( waitForReply() ) printf ( "Data sent Ok\n" );
+//	else printf ( "Data send error!\n" );
 	// Here there should be some code that reads out the 'SEND OK' response from the modem before closing the socket...
   parse_debug = false;
 #if 0
