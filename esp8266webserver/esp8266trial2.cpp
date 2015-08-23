@@ -59,9 +59,10 @@ enum commandPosition { // Positions in the command string array.
 	close_cmd  = 8
 };
 
-//char const *err_msg = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response */
-char const *error_msg = "HTTP/1.0 404 Not Found\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 15\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"ERROR\",\"404\"]";  /* Error response */
-char const *reply_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
+char const *error_msg_short = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response to be*/
+char const *error_msg_json = "HTTP/1.0 404 Not Found\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 15\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"ERROR\",\"404\"]";  /* Error response */
+char const *test2_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
+const char * http_reply;
 
 char const * const esp8266atCmd[9] = {
 	"ATE0",				 /* Disable character echo */	
@@ -499,7 +500,7 @@ boolean ipSend( void ) {
 		printf ( "Error!\n" );
 		return false;
 	}
-	sprintf( buf, "%ld", strlen( (char *) error_msg ) ); // Send data length
+	sprintf( buf, "%ld", strlen( (char *) http_reply ) ); // Send data length
 	printf( "Data length: " ) ;
 	if ( stringSendNoEcho( (char*) buf ) ) printf( "Ok\n" ) ;
 	else {
@@ -511,7 +512,7 @@ boolean ipSend( void ) {
 //  if ( writeCommandLineEndNoEcho() ) printf ( " Command responce Ok\n" ) ;
 
 	printf ( "Sending back data to socket\n" );
-	if ( stringSendNoEcho( (char*) error_msg ), false ) printf( "Ok\n" ) ;
+	if ( stringSendNoEcho( (char*) http_reply ), false ) printf( "Ok\n" ) ;
 
 	waitForSEND_OK();
 
@@ -667,7 +668,7 @@ boolean sendATcommand( int cmd ) {
 
 int main ( int argc, char * argv[] )
 {
-	unsigned char c;	
+	unsigned char c;
 
 	if ( argc < 2 ) {
 		fprintf( stderr, "Usage:  %s [devname]\n", argv[0] );
@@ -710,6 +711,7 @@ int main ( int argc, char * argv[] )
 		printf( "Listen for link data ...\n" );
 //		sendATcommand( data_cmd ); // Listen for data.
 		waitForServerConnection();
+		http_reply = test2_msg;
 //		printf( "Read out in buffer...\n" );
 //		readOutInBuffer();
 		printf( "Send back data on the connecting socket...\n" );
