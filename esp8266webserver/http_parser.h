@@ -25,6 +25,7 @@ extern "C" {
 #endif
 void httpParserInit( void ) ;
 enum urlResult httpParser( unsigned char in );
+int getParsedCommand( void );
 
 #ifdef __cplusplus
 }

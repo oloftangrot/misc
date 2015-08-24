@@ -337,9 +337,9 @@ enum atParseState atParse( unsigned char in )
 			}
 //			putc( in, stdout );
 			if ( 0 == cnt ) {
-				atPS = waitForCmdReply;  
+				atPS = waitForCmdReply;  // When all data has been received a tailing OK is expected
 				// ...and when all data has been received the responce should be sent back!
-				if ( url_ok ) {
+				if ( url_f ) {
 				//	atPS = resultOk;
 				}
 				else {
@@ -542,6 +542,7 @@ boolean waitForServerConnection( void ) {
 	int res;
 
 	cnt = 0;
+	url_f = false; // Clear the flag indicating that an url has been parsed sucessfully.
 	for ( int i = 0; i < NUM_AT_REPLY; i++ ) {
 		flags[i] = true;
 	}
@@ -710,9 +711,29 @@ int main ( int argc, char * argv[] )
 	for ( ;; ) {
 		printf( "Listen for link data ...\n" );
 //		sendATcommand( data_cmd ); // Listen for data.
-		waitForServerConnection();
-		http_reply = test2_msg;
-//		printf( "Read out in buffer...\n" );
+		if ( waitForServerConnection() ) {
+			if ( url_f ) {
+				int cmd = getParsedCommand();
+				switch ( cmd ) {
+					case 0:
+						http_reply = error_msg_short;
+						break;
+					case 3:
+						http_reply = test2_msg;
+						break;
+					default:
+						http_reply = error_msg_json;
+						break;
+				}
+			}
+			else {
+				http_reply = error_msg_json;
+			}
+		}
+		else {
+			http_reply = error_msg_json;
+		}
+		//		printf( "Read out in buffer...\n" );
 //		readOutInBuffer();
 		printf( "Send back data on the connecting socket...\n" );
 		ipSend();

@@ -147,3 +147,8 @@ enum urlResult httpParser( unsigned char in )
   } /* Switch */
 	return res;
 }
+
+int getParsedCommand( void )
+{
+	return cmd;
+}
