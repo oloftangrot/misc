@@ -15,10 +15,13 @@
 */
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 #include "http_parser.h"
 
 #define DEBUG_waitForGet
 #define DEBUG_waitForCommand
+
+int number = 0;
 
 enum parseState {
   waitForGet,
@@ -47,8 +50,8 @@ const char * www[2] = {
 
 char const * const commands[ numCommands ] = {
   "favicon.ico",
-  "test1/",
-  "test12/",
+  "rb/",
+  "wb/",
   "sirpa/"
 };
 
@@ -78,6 +81,24 @@ void httpParserInit( void )
 
 static int commandCnt;
 static int cmd;
+/*
+** Return 0-15 if input is a base 16 encoded ASCII char or -1 otherwise.
+*/
+char cxtoi( const char in )
+{
+	if ( 0 != isxdigit( in ) ) {
+		if ( 0 != isdigit( in ) ) {
+			return in - '0';
+		}
+		else if ( 0 != isupper( in ) ) {
+			return  10 + in - 'A';
+		}
+		else {
+			return  10 + in - 'a';
+		}
+	}
+	return -1;
+}
 
 enum urlResult httpParser( unsigned char in )
 {
@@ -106,8 +127,8 @@ enum urlResult httpParser( unsigned char in )
             if ( ( cnt + 1 ) == strlen( commands[ i ] ) ) {
 #ifdef DEBUG_waitForCommand
               printf( "Found command " );
-#endif
               printf( "%s\n", commands[ i ] ); 
+#endif
               cnt = -1; /* Let the out of loop cnt++ increment to 0. */
               cmd = i; /* Save the found command */
               if ( 0 == parseRules[i].numArgs ) {
@@ -116,6 +137,7 @@ enum urlResult httpParser( unsigned char in )
               }
               else {
                 pS = waitForArg ;
+								number = 0; // TODO Find some better way to initialize argument parameters...
               }
               break; /* Break out from the for loop */
             }
@@ -125,8 +147,8 @@ enum urlResult httpParser( unsigned char in )
             commandCnt--;
 #ifdef DEBUG_waitForCommand
             printf( "Command ruled out " );
-#endif
             printf( "%d\n", i );
+#endif
           }
         }
       }
@@ -143,6 +165,22 @@ enum urlResult httpParser( unsigned char in )
     case waitForTail:
       break;      
 		case waitForArg:
+			number = number * 16 + cxtoi( in );
+			if ( number >= 0 ) {
+				cnt++;
+				if ( cnt > 1 ) {
+	        pS = waitForGet;
+					res = url_ok; /* Signal that parsing URL has finnished with a successful command */
+					cnt = 0;
+					printf ( "Number found %d\n", number );
+				}
+			}
+			else {
+				printf ( "Error, not a base-16 digit!\n" );
+        pS = waitForGet; 
+				cnt = 0;
+				res = url_error; /* Signal thar parsing the URL should result with an error message */
+			}
 			break;
   } /* Switch */
 	return res;
