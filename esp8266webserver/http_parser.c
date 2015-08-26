@@ -20,14 +20,14 @@
 
 #define DEBUG_waitForGet
 #define DEBUG_waitForCommand
-
-int number = 0;
+#define DEBUG_waitForArg
 
 enum parseState {
   waitForGet,
   waitForCommand,
   waitForArg,
   waitForTail,
+	waitForArgumentSeparator
 };
 
 #ifndef __cplusplus
@@ -69,6 +69,9 @@ struct rules {
 
 static enum parseState pS;
 static size_t cnt;
+static int numArgs;
+static int currentArg;
+static int parsedArgument[2];
 
 void httpParserInit( void )
 {
@@ -103,6 +106,7 @@ char cxtoi( const char in )
 enum urlResult httpParser( unsigned char in )
 {
 	enum urlResult res = url_pending;
+	char tmp;
   switch ( pS ) {
     case waitForGet:
       if ( in == www[0][cnt] ) {
@@ -137,7 +141,10 @@ enum urlResult httpParser( unsigned char in )
               }
               else {
                 pS = waitForArg ;
-								number = 0; // TODO Find some better way to initialize argument parameters...
+								numArgs = parseRules[i].numArgs;
+								currentArg = 0;
+								parsedArgument[0] = 0;
+								parsedArgument[1] = 0;
               }
               break; /* Break out from the for loop */
             }
@@ -165,14 +172,23 @@ enum urlResult httpParser( unsigned char in )
     case waitForTail:
       break;      
 		case waitForArg:
-			number = number * 16 + cxtoi( in );
-			if ( number >= 0 ) {
+			tmp = cxtoi( in );
+			if ( tmp >= 0 ) {
+				parsedArgument[ currentArg ] = parsedArgument[ currentArg ] * 16 + tmp;
 				cnt++;
 				if ( cnt > 1 ) {
-	        pS = waitForGet;
-					res = url_ok; /* Signal that parsing URL has finnished with a successful command */
-					cnt = 0;
-					printf ( "Number found %d\n", number );
+#ifdef DEBUG_waitForArg
+					printf ( "Current argument %d read %d.\n",currentArg, parsedArgument[ currentArg ] );
+#endif
+					if ( currentArg < numArgs ) {
+						pS = waitForArgumentSeparator;
+						currentArg++;
+					}
+					else {
+		        pS = waitForGet;
+						res = url_ok; /* Signal that parsing URL has finnished with a successful command */
+						cnt = 0;
+					}
 				}
 			}
 			else {
@@ -180,6 +196,17 @@ enum urlResult httpParser( unsigned char in )
         pS = waitForGet; 
 				cnt = 0;
 				res = url_error; /* Signal thar parsing the URL should result with an error message */
+			}
+			break;
+		case waitForArgumentSeparator:
+			if ( '/' == in ) {
+				pS = waitForArg;
+				cnt = 0;
+			}
+			else {
+				pS = waitForGet;
+				cnt = 0;
+				res = url_error;
 			}
 			break;
   } /* Switch */
