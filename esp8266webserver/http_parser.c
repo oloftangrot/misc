@@ -46,13 +46,14 @@ const char * www[2] = {
   "HTTP/1.0 404 \r\n\r\n"  /* Error response */
 };
 
-#define numCommands 4
+#define numCommands 5
 
 char const * const commands[ numCommands ] = {
   "favicon.ico",
   "rb/",
   "wb/",
-  "sirpa/"
+	"sbi/",
+	"cbi/"
 };
 
 boolean flags[ numCommands ];
@@ -64,7 +65,8 @@ struct rules {
   { 0, waitForTail },
   { 1, waitForArg },
   { 2, waitForArg },
-  { 0, waitForTail }
+  { 1, waitForArg },
+  { 1, waitForArg }
 };
 
 static enum parseState pS;

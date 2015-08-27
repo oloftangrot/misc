@@ -62,6 +62,7 @@ enum commandPosition { // Positions in the command string array.
 char const *error_msg_short = "HTTP/1.0 404 Not Found\r\n\r\n";  /* Error response to be*/
 char const *error_msg_json = "HTTP/1.0 404 Not Found\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 15\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"ERROR\",\"404\"]";  /* Error response */
 char const *test2_msg = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 5\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nTEST2";
+char const *result_msg_json = "HTTP/1.1 200 OK\r\nServer: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\r\nContent-Length: 12\r\nConnection: close\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n[\"RES\",\"--\"]";
 const char * http_reply;
 
 char const * const esp8266atCmd[9] = {
@@ -719,7 +720,7 @@ int main ( int argc, char * argv[] )
 						http_reply = error_msg_short;
 						break;
 					case 3:
-						http_reply = test2_msg;
+						http_reply = result_msg_json;
 						break;
 					default:
 						http_reply = error_msg_json;
