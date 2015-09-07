@@ -50,8 +50,8 @@ void main( void )
 			f = 1;
 			OUTPORT &= ~( 1 << 2 );
 		}
-		for ( j = 0; j < 6000; j++ )		/* This loop should provide a 60 s delay*/
-			for ( i = 0; i < 1000; i++ )	/* This is the 0.01 s delay loop	*/
+		for ( j = 0; j < 1000; j++ )		
+			for ( i = 0; i < 100; i++ )		
 				__asm__("nop");
 #else
 		P0 = 0x55;
