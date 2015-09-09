@@ -7,7 +7,8 @@ void main( void )
 {
 	unsigned char minutes;
 	int i, j;
-
+	unsigned char f = 0;
+#if 0
 	OUTPORT |= 1 << RELAY_PIN; /* Activate the relay */
 	/*
     Delay start
@@ -23,4 +24,19 @@ void main( void )
 	  OUTPORT &= ~( 1 << RELAY_PIN ); /* Deactivate the relay */
 		__asm__("nop");
 	}
+#else
+	for ( ;; ) {
+		if ( f ) {
+			f = 0;
+			OUTPORT |= 1 << RELAY_PIN; /* Activate the relay */
+		}
+		else {
+			f = 1;
+		  OUTPORT &= ~( 1 << RELAY_PIN ); /* Deactivate the relay */
+		}
+		for ( j = 0; j < 100; j++ )		/* This loop should provide a 1 s delay*/
+			for ( i = 0; i < 1000; i++ )	/* This is the 0.01 s delay loop	*/
+				__asm__("nop");
+	}
+#endif
 }
