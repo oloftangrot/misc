@@ -14,12 +14,15 @@ void init_spi(void){
     SPI_Cmd(ENABLE);
 
     // Set CS pin in Output push-pull high level.
-    GPIO_Init(GPIOE, GPIO_PIN_5, GPIO_MODE_OUT_PP_HIGH_SLOW);
+//    GPIO_Init(GPIOE, GPIO_PIN_5, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(GPIOA, GPIO_PIN_3, GPIO_MODE_OUT_PP_HIGH_SLOW);
+
 }
 
 void spi_write_data_8t( uint8_t *pBuffer, uint8_t WriterAddr){
 
-    GPIO_WriteHigh(GPIOE, GPIO_PIN_5);
+//    GPIO_WriteHigh(GPIOE, GPIO_PIN_5);
+    GPIO_WriteHigh(GPIOA, GPIO_PIN_3);
 
     /*!< Wait until the transmit buffer is empty */
     while (SPI_GetFlagStatus(SPI_FLAG_TXE) == RESET){}
