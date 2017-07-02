@@ -1,8 +1,9 @@
 CC := sdcc
 CFLAGS := -mstm8 --std-c99
-OBJECT := timer-trial1
+OBJECT := timer-trial2
+OBJS := timer-trial1 timer-trial2
 
-all: timer-trial1
+all: $(OBJS)
 
 %.ihx: %.c
 	$(CC) $(CFLAGS) $<
@@ -17,4 +18,4 @@ factory_default: factory_defaults.bin
 	stm8flash -c stlinkv2 -p stm8s103f3 -s opt -w factory_defaults.bin
 
 clean:
-	rm -f *.asm *.ihx *.cdb *.lst *.map *.lk *.rel *.rst *.sym *.bin $(OBJECT)
+	rm -f *.asm *.ihx *.cdb *.lst *.map *.lk *.rel *.rst *.sym *.bin $(OBJS)

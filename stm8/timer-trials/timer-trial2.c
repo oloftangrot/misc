@@ -16,11 +16,11 @@
 #define CLK_ICKR	(*(volatile uint8_t *)0x50c0)
 #define CLK_PCKENR2	(*(volatile uint8_t *)0x50c4)
 
-#define TIM1_CR1	(*(volatile uint8_t *)0x52b0)
-#define TIM1_PCNTRH	(*(volatile uint8_t *)0x52bf)
-#define TIM1_PCNTRL	(*(volatile uint8_t *)0x52c0)
-#define TIM1_PSCRH	(*(volatile uint8_t *)0x52c1)
-#define TIM1_PSCRL	(*(volatile uint8_t *)0x52c2)
+#define TIM1_CR1	(*(volatile uint8_t *)0x5250)
+#define TIM1_PCNTRH	(*(volatile uint8_t *)0x525e)
+#define TIM1_PCNTRL	(*(volatile uint8_t *)0x525f)
+#define TIM1_PSCRH	(*(volatile uint8_t *)0x5260)
+#define TIM1_PSCRL	(*(volatile uint8_t *)0x5261)
 
 
 /*
@@ -53,8 +53,8 @@ void uart_init( void )
 
 void timer1_init( void ) 
 {
-	CLK_ICKR = 0x00; // Set the frequency to 16 MHz
-	CLK_PCKENR2 |= 0x02; // Enable clock to timer
+	CLK_ICKR = 0x01; // Enable the interna RC 16 MHz oscillator
+//	CLK_PCKENR2 |= 0x02; // Enable clock to timer
 
 	// Configure timer
 	// 1000 ticks per second
@@ -79,12 +79,27 @@ unsigned int clock(void)
 
 void main(void)
 {
+	int i;
+	timer1_init();
+	uart_init();
 	for(;;)
 	{
-		if (clock() % 3000 <= 500)
+#if 1
+		for ( i = 0; i < 20000; i++ ) ;
+		printf( "%d\n", clock() ) ;
+#endif
+#if 0
+		for ( i = 0; i < 10000; i++ ) ;
+		putchar( 0x55 );
+#endif
+#if 0
+		if ( ( clock() % 1000 ) == 0 )
 			putchar( '3' );
-		if (clock() % 5000 <= 1000)
+#endif
+#if 0
+		if ( ( clock() % 5000 ) == 0 )
 			putchar( '5' );
+#endif
 	}
 }
 
