@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 //void assert_failed( void){};
+char msg[] = { 0x55, 0x55, 0x55, 0x55, 0x0 };
 
 int main( void ) {
 
@@ -15,12 +16,13 @@ int main( void ) {
     // The main loop
     while( 1 ){
 
-        for(i=0;i<15000;i++) // A delay loop
+        for(i=0;i<150;i++) // A delay loop
         {
             nop();
         }
         GPIO_WriteReverse(GPIOD, GPIO_PIN_0);
-        spi_write_data_8t("keep going...", 0x40);//Random Address 0x40 for now.
+//        spi_write_data_8t("keep going...", 0x40);//Random Address 0x40 for now.
+        spi_write_data_8t("msg", 0x55);//Random Address 0x40 for now.
     }
 
 }
