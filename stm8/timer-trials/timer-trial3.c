@@ -13,18 +13,24 @@
 #define PE_DDR	(*(volatile uint8_t *)0x5016)
 #define PE_CR1	(*(volatile uint8_t *)0x5017)
 
-#define CLK_ICKR	(*(volatile uint8_t *)0x50c0)
-#define CLK_PCKENR2	(*(volatile uint8_t *)0x50c4)
+#define CLK_ICKR		( *(volatile uint8_t *) 0x50c0 )
+#define CLK_PCKENR2	( *(volatile uint8_t *) 0x50c4 )
 
-#define TIM1_CR1	(*(volatile uint8_t *)0x5250)
-#define TIM1_PCNTRH	(*(volatile uint8_t *)0x525e)
-#define TIM1_PCNTRL	(*(volatile uint8_t *)0x525f)
-#define TIM1_PSCRH	(*(volatile uint8_t *)0x5260)
-#define TIM1_PSCRL	(*(volatile uint8_t *)0x5261)
+#define TIM1_CR1		( *(volatile uint8_t *) 0x5250 )
+#define TIM1_PCNTRH	( *(volatile uint8_t *) 0x525e )
+#define TIM1_PCNTRL	( *(volatile uint8_t *) 0x525f )
+#define TIM1_PSCRH	( *(volatile uint8_t *) 0x5260 )
+#define TIM1_PSCRL	( *(volatile uint8_t *) 0x5261 )
+#define TIM1_IER		( *(volatile uint8_t *) 0x5254 )
+#define TIM1_SR1		( *(volatile uint8_t *) 0x5255 )
 
+#define UIF	 (1<<0) // Update interrupt flag
+#define UIE  (1<<0) // Update interrupt enable
+#define CEN  (1<<0) // Counter enable, CR1
+#define UDIS (1<<1) // Update disable, CR1
 
 /*
-** Includes used by the serial uart
+** Defines used by the serial uart
 */
 #define CLK_DIVR        (*(volatile uint8_t *)0x50c6)
 #define CLK_PCKENR1     (*(volatile uint8_t *)0x50c7)
@@ -40,6 +46,47 @@
 #define UART_CR3_STOP2 (1 << 5)
 #define UART_CR3_STOP1 (1 << 4)
 #define UART_SR_TXE (1 << 7)
+/*
+** Defines used by GPIO port B
+*/
+#define PB_ODR ( *(unsigned char*) 0x5005 )
+#define PB_IDR ( *(unsigned char*) 0x5006 )
+#define PB_DDR ( *(unsigned char*) 0x5007 )
+#define PB_CR1 ( *(unsigned char*) 0x5008 )
+#define PB_CR2 ( *(unsigned char*) 0x5009 )
+
+
+#define wfi()                                                                  \
+  { __asm__("wfi\n"); } /* Wait For Interrupt */
+#define enable_interrupts()                                                                  \
+  { __asm__("rim"); } /* Enable interrupts */
+
+unsigned int cnt = 0;
+unsigned char f = 0;
+
+void timer1_overflow_isr(void) __interrupt( 11 ) {
+	if ( TIM1_SR1 & UIF ) {
+		cnt++;
+		f = 1;
+		TIM1_SR1 &= ~UIF; // Clear interrupt
+	}	
+}
+
+
+inline void led_set( void ) {
+	PB_ODR &= ~0x20; // Set led.
+}
+
+inline void led_clear( void ) {
+	PB_ODR |= 0x20; // Clear led.
+}
+
+void gpio_init( void ) 
+{
+	PB_DDR = 0x20;
+	PB_CR1 = 0x20;
+	led_clear();
+}
 
 void uart_init( void ) 
 {
@@ -60,14 +107,16 @@ void timer1_init( void )
 	// 1000 ticks per second
 	TIM1_PSCRH = 0x3e;
 	TIM1_PSCRL = 0x80;
-	// Enable timer
-	TIM1_CR1 = 0x01;
+
+	TIM1_CR1 &= ~UDIS;	// Not disable updates
+	TIM1_CR1 |= CEN; 		// Enable timer
+	TIM1_IER |= UIE; 		// Interrupt update interrupt
 }
 
 void putchar(char c)
 {
-        while(!(UART1_SR & UART_SR_TXE));
-        UART1_DR = c;
+	while(!(UART1_SR & UART_SR_TXE));
+	UART1_DR = c;
 }
 
 unsigned int clock(void)
@@ -84,7 +133,10 @@ void main(void)
 
 	timer1_init();
 	uart_init();
+	gpio_init();
+	f = 0;
 	old = clock();	
+	enable_interrupts();
 	for(;;)
 	{
 #if 0
@@ -96,10 +148,16 @@ void main(void)
 		putchar( 0x55 );
 #endif
 #if 1
-		new = clock();
-		if ( ( new - old ) >= 1000  ) {
-			old = new;
-			putchar( '3' );
+		if ( f ) {
+			led_set();
+			old = clock();
+			f = 0;
+		}
+		else {	
+			new = clock();
+			if ( ( new - old ) >= 1000  ) {
+		    led_clear();
+			}
 		}
 #endif
 #if 0

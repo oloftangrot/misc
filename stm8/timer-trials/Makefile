@@ -1,7 +1,7 @@
 CC := sdcc
 CFLAGS := -mstm8 --std-c99
-OBJECT := timer-trial2
-OBJS := timer-trial1 timer-trial2
+OBJECT := timer-trial3
+OBJS := timer-trial1 timer-trial2 timer-trial3
 
 all: $(OBJS)
 

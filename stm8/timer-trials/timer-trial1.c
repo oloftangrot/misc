@@ -12,11 +12,19 @@
 #define CLK_DIVR	(*(volatile uint8_t *)0x50c0)
 #define CLK_PCKENR2	(*(volatile uint8_t *)0x50c4)
 
+
+#define TIM1_CR1	(*(volatile uint8_t *)0x5250)
+#define TIM1_PCNTRH	(*(volatile uint8_t *)0x525e)
+#define TIM1_PCNTRL	(*(volatile uint8_t *)0x525f)
+#define TIM1_PSCRH	(*(volatile uint8_t *)0x5260)
+#define TIM1_PSCRL	(*(volatile uint8_t *)0x5261)
+#if 0
 #define TIM1_CR1	(*(volatile uint8_t *)0x52b0)
 #define TIM1_PCNTRH	(*(volatile uint8_t *)0x52bf)
 #define TIM1_PCNTRL	(*(volatile uint8_t *)0x52c0)
 #define TIM1_PSCRH	(*(volatile uint8_t *)0x52c1)
 #define TIM1_PSCRL	(*(volatile uint8_t *)0x52c2)
+#endif
 
 unsigned int clock(void)
 {
