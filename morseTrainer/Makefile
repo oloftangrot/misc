@@ -1,7 +1,7 @@
 all: morseEncoder
 
 
-morseEncoder: serial.c morseEncoder.c
+morseEncoder: morseEncoder.c
 	gcc -Wall -o $@ $^
 
 clean:
