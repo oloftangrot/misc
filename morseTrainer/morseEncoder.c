@@ -74,8 +74,8 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 	return 60000./(wpm * wpmNorms[norm].l);
 }
 
-char msg[] = "OLOF HEJ";
-
+//char msg[] = "OLOF HEJ";
+char msg[] = "HHHH";
 const int wpm = 10;
 
 static int __attribute__((unused)) sprintfSeqNo_( char * buf, unsigned short c ) ;
@@ -125,27 +125,27 @@ int main ( void )
 	    for ( j = 0; j < strlen(p); j++ ) {
 			  if ('.' == p[j] ) {
 					printf ( "/%d", di_ );
-					n += sprintf( buf+n, "/%06x*", di_ * diTime );
+					n += sprintf( buf+n, "/%d*", di_ * diTime );
 				}
 	      else if ( '-' == p[j] ) {
 					printf ( "/%d", da_ );
-					n += sprintf( buf+n, "/%06x*", da_ * diTime );
+					n += sprintf( buf+n, "/%d*", da_ * diTime );
 				}
 			  else printf ("? " );
 			  if ( j < (strlen(p) - 1)) { 
 					printf("\\%d", markSpace_ );
-					n += sprintf( buf+n, "\\%06x*", markSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d*", markSpace_ * diTime );
 				}
 		  }
 	  
 	  	if ( msg[i+1] != ' ' ) {
 				printf ("\\%d", charSpace_ ); 	
-					n += sprintf( buf+n, "\\%06x*", charSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d*", charSpace_ * diTime );
 			}
 		}
 		else {
 			printf ("\\%d", wordSpace_ );
-					n += sprintf( buf+n, "\\%06x*", wordSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d*", wordSpace_ * diTime );
 		}
 	}
 #if 0
@@ -155,8 +155,10 @@ int main ( void )
   sprintfTime_(buf, 0x66a5a5 );
 #endif
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
-	write( fd, buf, strlen(buf) );
+	for (int k= 0; k<10; k++)
+		write( fd, buf, strlen(buf) );
 
+	tcdrain( fd );
 	/* restore the old port settings */
 	tcsetattr(fd, TCSANOW, &oldtio);
 
