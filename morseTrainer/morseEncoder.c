@@ -1,11 +1,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
-#include <termios.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <termios.h>
 
 /* baudrate settings are defined in <asm/termbits.h>, which is
 included by <termios.h> */
@@ -75,14 +76,17 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 }
 
 //char msg[] = "OLOF HEJ";
-char msg[] = "HHHH";
-const int wpm = 10;
+//char msg[] = "H  H  H  H  ";
+char msg[] = "O  O  O  O  ";
+const int wpm = 5;
 
 static int __attribute__((unused)) sprintfSeqNo_( char * buf, unsigned short c ) ;
 static int __attribute__((unused)) sprintfTime_( char * buf, unsigned int c );
 void asyncInit( int fd );
 
-char buf[10000];
+#define BUFSIZE 10000
+
+char buf[BUFSIZE];
 
 
 int main ( void )
@@ -99,8 +103,8 @@ int main ( void )
 		Open modem device for reading and writing and not as controlling tty
 		because we don't want to get killed if linenoise sends CTRL-C.
 	*/
-	fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY ); 
-//	fd = open(MODEMDEVICE, O_RDWR  ); 
+	fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY );
+
 	if ( fd < 0 ) {
 		perror(MODEMDEVICE); exit( -1 ); 
 	}
@@ -108,6 +112,7 @@ int main ( void )
 	tcgetattr( fd, &oldtio ); /* save current serial port settings */
 	asyncInit( fd );
 
+	printf("Init done\n");
 #if 0
 	for ( int i = 0; i < 33; i++ )
 	{
@@ -155,11 +160,21 @@ int main ( void )
   sprintfTime_(buf, 0x66a5a5 );
 #endif
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
-	for (int k= 0; k<10; k++)
+//	for (int k= 0; k<100; k++)
 		write( fd, buf, strlen(buf) );
 
 	tcdrain( fd );
+	sleep(10);
+	
+  int bytes;
+
+  ioctl(fd, FIONREAD, &bytes);
+  printf( "Bytes in buffer %d\n", bytes );
 	/* restore the old port settings */
+	memset(buf, 0, BUFSIZE );
+	read( fd, buf, BUFSIZE );
+  printf ("Read from tty:\n");
+  printf ("%s\n", buf);
 	tcsetattr(fd, TCSANOW, &oldtio);
 
 	return 0;
@@ -194,15 +209,13 @@ void asyncInit( int fd ) {
 						will not terminate input)
 						otherwise make device raw (no other input processing)
 	*/
-//	newtio.c_iflag = IGNPAR | ICRNL ;
-	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF;
+	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF | ICRNL;
 
 	/*
 		ICANON  : enable canonical input
 							disable all echo functionality, and don't send signals to calling program
 	*/
-	newtio.c_lflag = ICANON;
-
+  newtio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); // Raw input.
 	/* 
 		initialize all control characters 
 		default values can be found in /usr/include/termios.h, and are given
