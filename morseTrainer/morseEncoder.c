@@ -77,7 +77,7 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
-char msg[] = "O  O  O  O  ";
+char msg[] = "HH";
 const int wpm = 5;
 
 static int __attribute__((unused)) sprintfSeqNo_( char * buf, unsigned short c ) ;
@@ -92,6 +92,7 @@ char buf[BUFSIZE];
 int main ( void )
 {
 	int fd; 
+  int bytes, status;
 	struct termios oldtio;
 	unsigned short seqNo = 0;
   unsigned short diTime = getDotTimeIn_ms(wpm, 0);
@@ -111,6 +112,10 @@ int main ( void )
 
 	tcgetattr( fd, &oldtio ); /* save current serial port settings */
 	asyncInit( fd );
+
+  ioctl(fd, TIOCMGET, &status);
+	status |= TIOCM_DTR;
+	ioctl(fd, TIOCMSET, status); // Ensure the Aruino is not held in reset
 
 	printf("Init done\n");
 #if 0
@@ -160,13 +165,21 @@ int main ( void )
   sprintfTime_(buf, 0x66a5a5 );
 #endif
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
+
+	sleep(4);
+#if 0
+  ioctl(fd, FIONREAD, &bytes);
+	if (2 != bytes) {
+		printf( "No start!\n");
+		exit(0);
+	}
+#endif
 //	for (int k= 0; k<100; k++)
 		write( fd, buf, strlen(buf) );
 
 	tcdrain( fd );
-	sleep(10);
+	sleep(4);
 	
-  int bytes;
 
   ioctl(fd, FIONREAD, &bytes);
   printf( "Bytes in buffer %d\n", bytes );
@@ -251,8 +264,8 @@ void asyncInit( int fd ) {
  * Trainer Commands:
  * $run
  * $stop
- * /[bbbbbb] - high seq.no. time
- * \[bbbbbb] - low seq.no time 
+ * /n* -  n time given as decimal ascii digits terminated by '*'
+ * \n* -  n time given as decimal ascii digits terminated by '*'
 
 		Trainer flow control:
   	XON
