@@ -1,12 +1,18 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+
+//char msg[] = "OLOF HEJ";
+//char msg[] = "H  H  H  H  ";
+char msg[] = " SA2KAA SA2KAA SA2KAA SA2KAA";
+const int wpm = 12;
 
 /* baudrate settings are defined in <asm/termbits.h>, which is
 included by <termios.h> */
@@ -15,15 +21,26 @@ included by <termios.h> */
 /* change this definition for the correct port */
 #define MODEMDEVICE "/dev/ttyUSB0"
 
-const static int speed = 10;
-
 const static int wordSpace_ = 7;
 const static int charSpace_ = 3;
 const static int markSpace_ = 1;
 const static int di_ = 1;
 const static int da_ = 3;
 
- char * arr[35] = {
+char * digits[10] = {
+ "-----", /* 0 */
+ ".----", /* 1 */
+ "..---", /* 2 */
+ "...--", /* 3 */
+ "....-", /* 4 */
+ ".....", /* 5 */
+ "-....", /* 6 */
+ "--...", /* 7 */
+ "---..", /* 8 */
+ "----." /* 9 */
+};
+
+ char * alphas[35] = {
  ".-",    /* a */
  "-...",  /* b */
  "-.-.",  /* c */
@@ -60,7 +77,6 @@ const static int da_ = 3;
  "-.---",  /* vänta */
 };
 
-
 const struct { int l; char * str;} wpmNorms[3] = {
 	{50, "PARIS"},
   {54, "KANON" },
@@ -75,11 +91,6 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 	return 60000./(wpm * wpmNorms[norm].l);
 }
 
-//char msg[] = "OLOF HEJ";
-//char msg[] = "H  H  H  H  ";
-char msg[] = "HH";
-const int wpm = 5;
-
 static int __attribute__((unused)) sprintfSeqNo_( char * buf, unsigned short c ) ;
 static int __attribute__((unused)) sprintfTime_( char * buf, unsigned int c );
 void asyncInit( int fd );
@@ -88,10 +99,10 @@ void asyncInit( int fd );
 
 char buf[BUFSIZE];
 
-
 int main ( void )
 {
 	int fd; 
+	int totalTime_ms = 0;
   int bytes, status;
 	struct termios oldtio;
 	unsigned short seqNo = 0;
@@ -115,47 +126,46 @@ int main ( void )
 
   ioctl(fd, TIOCMGET, &status);
 	status |= TIOCM_DTR;
-	ioctl(fd, TIOCMSET, status); // Ensure the Aruino is not held in reset
+	ioctl(fd, TIOCMSET, status); // Ensure the Arduino is not held in reset
 
 	printf("Init done\n");
-#if 0
-	for ( int i = 0; i < 33; i++ )
-	{
-	  for ( int j = 0; j < strlen(arr[i]; j++ ) {
-			
-			printf (".");
-		}
- 	}
-#endif
+
 	int n = 0;
 	for ( int i = 0; i < strlen(msg); i++ ) {
 		int j;
 		if ( ' '  != msg[i] ) {
-		  char * p = arr[msg[i] - 'A'];	
+			char * p;
+			if( isdigit( msg[i] ) ) p = digits[msg[i] - '0'];
+		  else p = alphas[msg[i] - 'A'];	
 	    for ( j = 0; j < strlen(p); j++ ) {
 			  if ('.' == p[j] ) {
 					printf ( "/%d", di_ );
 					n += sprintf( buf+n, "/%d*", di_ * diTime );
+					totalTime_ms += di_ * diTime;
 				}
 	      else if ( '-' == p[j] ) {
 					printf ( "/%d", da_ );
 					n += sprintf( buf+n, "/%d*", da_ * diTime );
+					totalTime_ms += da_ * diTime;
 				}
 			  else printf ("? " );
 			  if ( j < (strlen(p) - 1)) { 
 					printf("\\%d", markSpace_ );
 					n += sprintf( buf+n, "\\%d*", markSpace_ * diTime );
+					totalTime_ms += markSpace_ * diTime;
 				}
 		  }
 	  
 	  	if ( msg[i+1] != ' ' ) {
 				printf ("\\%d", charSpace_ ); 	
 					n += sprintf( buf+n, "\\%d*", charSpace_ * diTime );
+					totalTime_ms += charSpace_ * diTime;
 			}
 		}
 		else {
 			printf ("\\%d", wordSpace_ );
 					n += sprintf( buf+n, "\\%d*", wordSpace_ * diTime );
+					totalTime_ms += wordSpace_ * diTime;
 		}
 	}
 #if 0
@@ -165,8 +175,14 @@ int main ( void )
   sprintfTime_(buf, 0x66a5a5 );
 #endif
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
+	printf("Total time %f s\n", totalTime_ms/1000. );
 
-	sleep(4);
+	read( fd, buf, BUFSIZE );
+	if ( '>' != buf[0] ) {
+		printf( "Wrong start promt!\n" );
+		exit( 0 );
+  }
+	sleep(1);
 #if 0
   ioctl(fd, FIONREAD, &bytes);
 	if (2 != bytes) {
@@ -178,7 +194,7 @@ int main ( void )
 		write( fd, buf, strlen(buf) );
 
 	tcdrain( fd );
-	sleep(4);
+	sleep((totalTime_ms+500)/1000);
 	
 
   ioctl(fd, FIONREAD, &bytes);
