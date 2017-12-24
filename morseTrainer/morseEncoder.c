@@ -99,7 +99,8 @@ char buf[BUFSIZE];
 
 int main ( void )
 {
-	int fd; 
+	int fd;
+	FILE *of; 
 	int totalTime_ms = 0;
   int bytes, status;
 	struct termios oldtio;
@@ -108,6 +109,12 @@ int main ( void )
 	printf( "Baud %d %f\n", wpm, getBaud(wpm, 0) );
 	printf( "Dot time %d %f\n", wpm, (float) diTime);
   printf( "Char rate %d\n", wpm * 5 );
+
+	of = fopen( "out.vcd", "w" );
+  if ( NULL == of ) {
+		fprintf( stderr, "Error opening file!\n" );
+    exit ( 0 );
+  }
 
 	/* 
 		Open modem device for reading and writing and not as controlling tty
@@ -204,6 +211,9 @@ int main ( void )
 	read( fd, buf, BUFSIZE );
   printf ("Read from tty:\n");
   printf ("%s\n", buf);
+	fprintf ( of, "%s", buf );
+  fclose( of );
+
 	write( fd, "?", 1 );
   sleep( 1 );
 	memset(buf, 0, BUFSIZE );
