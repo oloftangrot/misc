@@ -11,7 +11,7 @@
 
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
-char msg[] = " SA2KAA SA2KAA SA2KAA SA2KAA";
+char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA";
 const int wpm = 12;
 
 /* baudrate settings are defined in <asm/termbits.h>, which is
@@ -91,8 +91,6 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 	return 60000./(wpm * wpmNorms[norm].l);
 }
 
-static int __attribute__((unused)) sprintfSeqNo_( char * buf, unsigned short c ) ;
-static int __attribute__((unused)) sprintfTime_( char * buf, unsigned int c );
 void asyncInit( int fd );
 
 #define BUFSIZE 10000
@@ -127,6 +125,13 @@ int main ( void )
   ioctl(fd, TIOCMGET, &status);
 	status |= TIOCM_DTR;
 	ioctl(fd, TIOCMSET, status); // Ensure the Arduino is not held in reset
+
+	read( fd, buf, BUFSIZE );
+	if ( '>' != buf[0] ) {
+		printf( "Wrong start promt!\n" );
+		exit( 0 );
+  }
+	write( fd, "?", 1 ); // Send something to shake up the uart.
 
 	printf("Init done\n");
 
@@ -177,12 +182,6 @@ int main ( void )
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
 	printf("Total time %f s\n", totalTime_ms/1000. );
 
-	read( fd, buf, BUFSIZE );
-	if ( '>' != buf[0] ) {
-		printf( "Wrong start promt!\n" );
-		exit( 0 );
-  }
-	sleep(1);
 #if 0
   ioctl(fd, FIONREAD, &bytes);
 	if (2 != bytes) {
@@ -191,10 +190,11 @@ int main ( void )
 	}
 #endif
 //	for (int k= 0; k<100; k++)
-		write( fd, buf, strlen(buf) );
+	bytes =	write( fd, buf, strlen(buf) );
+  printf ( "%ld bytes to write, %d bytes written,\n", strlen(buf), bytes );
 
 	tcdrain( fd );
-	sleep((totalTime_ms+500)/1000);
+	sleep( ( totalTime_ms + 500 ) / 1000 );
 	
 
   ioctl(fd, FIONREAD, &bytes);
@@ -204,19 +204,16 @@ int main ( void )
 	read( fd, buf, BUFSIZE );
   printf ("Read from tty:\n");
   printf ("%s\n", buf);
+	write( fd, "?", 1 );
+  sleep( 1 );
+	memset(buf, 0, BUFSIZE );
+	read( fd, buf, BUFSIZE );
+  printf ("%s\n", buf);
+
 	tcsetattr(fd, TCSANOW, &oldtio);
 
 	return 0;
 }
-
-static int sprintfSeqNo_( char * buf, unsigned short c ) {
-	return sprintf( buf, "%04x", c );
-}
-
-static int sprintfTime_( char * buf, unsigned int c ) {
-	return sprintf( buf, "%06x", c );
-}
-
 
 void asyncInit( int fd ) {
 	struct termios newtio;
@@ -238,7 +235,7 @@ void asyncInit( int fd ) {
 						will not terminate input)
 						otherwise make device raw (no other input processing)
 	*/
-	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF | ICRNL;
+	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF; // | ICRNL;
 
 	/*
 		ICANON  : enable canonical input
