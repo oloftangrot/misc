@@ -11,7 +11,7 @@
 
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
-char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA";
+char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
 const int wpm = 12;
 
 /* baudrate settings are defined in <asm/termbits.h>, which is
@@ -92,6 +92,7 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 }
 
 void asyncInit( int fd );
+void writeVcdHead( FILE * of );
 
 #define BUFSIZE 10000
 
@@ -138,7 +139,7 @@ int main ( void )
 		printf( "Wrong start promt!\n" );
 		exit( 0 );
   }
-	write( fd, "?", 1 ); // Send something to shake up the uart.
+//	write( fd, "?", 1 ); // Send something to shake up the uart.
 
 	printf("Init done\n");
 
@@ -152,31 +153,31 @@ int main ( void )
 	    for ( j = 0; j < strlen(p); j++ ) {
 			  if ('.' == p[j] ) {
 					printf ( "/%d", di_ );
-					n += sprintf( buf+n, "/%d*", di_ * diTime );
+					n += sprintf( buf+n, "/%d\n", di_ * diTime );
 					totalTime_ms += di_ * diTime;
 				}
 	      else if ( '-' == p[j] ) {
 					printf ( "/%d", da_ );
-					n += sprintf( buf+n, "/%d*", da_ * diTime );
+					n += sprintf( buf+n, "/%d\n", da_ * diTime );
 					totalTime_ms += da_ * diTime;
 				}
 			  else printf ("? " );
 			  if ( j < (strlen(p) - 1)) { 
 					printf("\\%d", markSpace_ );
-					n += sprintf( buf+n, "\\%d*", markSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d\n", markSpace_ * diTime );
 					totalTime_ms += markSpace_ * diTime;
 				}
 		  }
 	  
 	  	if ( msg[i+1] != ' ' ) {
 				printf ("\\%d", charSpace_ ); 	
-					n += sprintf( buf+n, "\\%d*", charSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d\n", charSpace_ * diTime );
 					totalTime_ms += charSpace_ * diTime;
 			}
 		}
 		else {
 			printf ("\\%d", wordSpace_ );
-					n += sprintf( buf+n, "\\%d*", wordSpace_ * diTime );
+					n += sprintf( buf+n, "\\%d\n", wordSpace_ * diTime );
 					totalTime_ms += wordSpace_ * diTime;
 		}
 	}
@@ -211,6 +212,7 @@ int main ( void )
 	read( fd, buf, BUFSIZE );
   printf ("Read from tty:\n");
   printf ("%s\n", buf);
+  writeVcdHead( of );
 	fprintf ( of, "%s", buf );
   fclose( of );
 
@@ -282,6 +284,29 @@ void asyncInit( int fd ) {
 	tcsetattr(fd, TCSANOW, &newtio);
 }
 
+const char* vcdHead[] = {
+		"$timescale 1ms $end\n",
+		"$scope module cw_trainer $end\n",
+		"$var wire 1 $ key $end\n",
+		"$var wire 1 % out $end\n",
+		"$var wire 1 ^ overflow $end\n",
+		"$var wire 1 ( underflow $end\n",
+		"$upscope $end\n",
+		"$enddefinitions $end\n",
+		"$dumpvars\n",
+		"0$\n",
+		"0%\n",
+		"0^\n",
+		"0(\n",
+		"$end\n",
+		NULL };
+
+void writeVcdHead( FILE * of ) {
+	int i = 0;
+	while ( NULL != vcdHead[i] ) {
+		fprintf( of, "%s", vcdHead[i++] );
+	}
+}
 
 /**
  * Trainer Commands:
