@@ -93,6 +93,7 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 
 void asyncInit( int fd );
 void writeVcdHead( FILE * of );
+void writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
 
 #define BUFSIZE 10000
 
@@ -134,12 +135,13 @@ int main ( void )
 	status |= TIOCM_DTR;
 	ioctl(fd, TIOCMSET, status); // Ensure the Arduino is not held in reset
 
+#if 0
 	read( fd, buf, BUFSIZE );
 	if ( '>' != buf[0] ) {
 		printf( "Wrong start promt!\n" );
 		exit( 0 );
   }
-//	write( fd, "?", 1 ); // Send something to shake up the uart.
+#endif
 
 	printf("Init done\n");
 
@@ -181,22 +183,12 @@ int main ( void )
 					totalTime_ms += wordSpace_ * diTime;
 		}
 	}
-#if 0
-	char buf[256];
-  sprintfSeqNo_(buf, 0xa5a5 );
-	printf("Res: %s\n", buf );
-  sprintfTime_(buf, 0x66a5a5 );
-#endif
+
 	printf("\nSequence count %d:\n%s\n", seqNo, buf );
 	printf("Total time %f s\n", totalTime_ms/1000. );
 
+	writeAndHandleXONXOFF( fd, buf, strlen(buf), NULL, 0 );
 #if 0
-  ioctl(fd, FIONREAD, &bytes);
-	if (2 != bytes) {
-		printf( "No start!\n");
-		exit(0);
-	}
-#endif
 //	for (int k= 0; k<100; k++)
 	bytes =	write( fd, buf, strlen(buf) );
   printf ( "%ld bytes to write, %d bytes written,\n", strlen(buf), bytes );
@@ -221,12 +213,60 @@ int main ( void )
 	memset(buf, 0, BUFSIZE );
 	read( fd, buf, BUFSIZE );
   printf ("%s\n", buf);
+#endif
 
 	tcsetattr(fd, TCSANOW, &oldtio);
 
 	return 0;
 }
 
+enum {
+	waitForXOFF = 0,
+	waitForXON = 1,
+	notInWaitState = 2,
+	waitForEnd = 3,
+};
+
+
+void writeAndHandleXONXOFF( int fd, char *outbuff, size_t outSize, char *inbuff, size_t in_size ) {
+	char tmp[1024];
+	size_t pos = 0;
+  int newLineCount;
+	int i, state = notInWaitState;
+	do {
+		switch ( state ) {
+			case notInWaitState:
+				memset( tmp, 0, 1024 );
+				newLineCount = 0;
+				for ( i = pos; i < outSize; i++ ) {
+					if ( outbuff[i] == '\n' ) newLineCount++;
+					if ( 10 == newLineCount ) break;
+				}
+				memcpy( tmp, outbuff + pos, i + 1 - pos ); // Need to add 1 to get the last line break.
+				printf( "=%d=\n", i );
+				printf( "%s", tmp );
+				printf( "==\n" );
+				pos = i + 1;
+				// Find pointer position of the end of next 10 events
+				// Write the 10 complete events
+//			state = waitForXOFF;
+				break;
+			case waitForXOFF:
+//				read( fd, , 1 );
+				// if XOFF == c ) state = waitForXON
+							
+				// else copy to inbuff
+				// if ( '\n' == c ) state = notInWaitState and copy to inbuff
+			
+				break;
+  		case	waitForXON:
+//				read( fd, 
+				// if  XON == c ) state = notInWaitState;
+				// else copy to inbuff	
+				break;
+		}
+	} while ( i < outSize );
+}
 void asyncInit( int fd ) {
 	struct termios newtio;
 
