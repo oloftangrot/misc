@@ -13,6 +13,8 @@
 //char msg[] = "H  H  H  H  ";
 char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
 const int wpm = 12;
+const unsigned char XOFF = 19;
+const unsigned char XON  = 17;
 
 /* baudrate settings are defined in <asm/termbits.h>, which is
 included by <termios.h> */
@@ -93,7 +95,7 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 
 void asyncInit( int fd );
 void writeVcdHead( FILE * of );
-void writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
+char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
 
 #define BUFSIZE 10000
 
@@ -224,49 +226,77 @@ enum {
 	waitForXOFF = 0,
 	waitForXON = 1,
 	notInWaitState = 2,
-	waitForEnd = 3,
+	waitForCarrageReturn = 3,
 };
 
 
-void writeAndHandleXONXOFF( int fd, char *outbuff, size_t outSize, char *inbuff, size_t in_size ) {
+char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t outSize, char *inbuff, size_t in_size ) {
 	char tmp[1024];
 	size_t pos = 0;
   int newLineCount;
 	int i, state = notInWaitState;
+	ssize_t n_in;
 	do {
 		switch ( state ) {
 			case notInWaitState:
 				memset( tmp, 0, 1024 );
 				newLineCount = 0;
+				// Find pointer position of the end of next 10 events
 				for ( i = pos; i < outSize; i++ ) {
 					if ( outbuff[i] == '\n' ) newLineCount++;
 					if ( 10 == newLineCount ) break;
 				}
-				memcpy( tmp, outbuff + pos, i + 1 - pos ); // Need to add 1 to get the last line break.
+				int n_out = i + 1 - pos; // Need to add 1 to get the last line break.
+				memcpy( tmp, outbuff + pos, n_out ); 
 				printf( "=%d=\n", i );
 				printf( "%s", tmp );
 				printf( "==\n" );
+				write( fd, tmp, n_out ); // Write the 10 complete events
 				pos = i + 1;
-				// Find pointer position of the end of next 10 events
-				// Write the 10 complete events
-//			state = waitForXOFF;
+				n_in = read( fd, tmp, 1024 );
+				state = waitForCarrageReturn;
+				for ( i = 0; i < n_in; i++ ) {
+					if ( tmp[i] != XOFF )	{ // Only need to check for XOFF here.
+						*outbuff++ = tmp[i];
+						if ( ( '\n' == tmp[i] ) && ( state != waitForXON )) {
+							state = notInWaitState;
+						} 
+					}
+					else {
+						state = waitForXON;
+					}
+				}
 				break;
-			case waitForXOFF:
-//				read( fd, , 1 );
-				// if XOFF == c ) state = waitForXON
-							
-				// else copy to inbuff
-				// if ( '\n' == c ) state = notInWaitState and copy to inbuff
-			
+			case waitForXON:
+				n_in = read( fd, tmp, 1024 );
+				for ( i = 0; i < n_in; i++ ) {
+					if ( tmp[i] != XON )	{ // Only need to check for XON here.
+						*outbuff++ = tmp[i];
+					}
+					else {
+						state = notInWaitState;
+					}
+				}
 				break;
-  		case	waitForXON:
-//				read( fd, 
-				// if  XON == c ) state = notInWaitState;
-				// else copy to inbuff	
+			case waitForCarrageReturn:
+				n_in = read( fd, tmp, 1024 );
+				for ( i = 0; i < n_in; i++ ) {
+					if ( tmp[i] != XOFF )	{ // Only need to check for XOFF here.
+						*outbuff++ = tmp[i];
+						if ( ( '\n' == tmp[i] ) && ( state != waitForXON )) {
+							state = notInWaitState;
+						} 
+					}
+					else {
+						state = waitForXON;
+					}
+				}	
 				break;
 		}
 	} while ( i < outSize );
+	return outbuff;
 }
+
 void asyncInit( int fd ) {
 	struct termios newtio;
 
