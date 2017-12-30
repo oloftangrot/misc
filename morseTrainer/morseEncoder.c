@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/time.h>
 
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
@@ -96,10 +97,12 @@ float getDotTimeIn_ms(int wpm, int norm ) {
 void asyncInit( int fd );
 void writeVcdHead( FILE * of );
 char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
+long long current_timestamp();
 
 #define BUFSIZE 10000
 
 char buf[BUFSIZE];
+char inbuff[BUFSIZE];
 
 int main ( void )
 {
@@ -108,7 +111,7 @@ int main ( void )
 	int totalTime_ms = 0;
   int bytes, status;
 	struct termios oldtio;
-	unsigned short seqNo = 0;
+	unsigned short seqNo __attribute__((unused)) = 0  ;
   unsigned short diTime = getDotTimeIn_ms(wpm, 0);
 	printf( "Baud %d %f\n", wpm, getBaud(wpm, 0) );
 	printf( "Dot time %d %f\n", wpm, (float) diTime);
@@ -137,7 +140,7 @@ int main ( void )
 	status |= TIOCM_DTR;
 	ioctl(fd, TIOCMSET, status); // Ensure the Arduino is not held in reset
 
-#if 0
+#if 1
 	read( fd, buf, BUFSIZE );
 	if ( '>' != buf[0] ) {
 		printf( "Wrong start promt!\n" );
@@ -186,36 +189,37 @@ int main ( void )
 		}
 	}
 
-	printf("\nSequence count %d:\n%s\n", seqNo, buf );
-	printf("Total time %f s\n", totalTime_ms/1000. );
+//	printf("\nSequence count %d:\n%s\n", seqNo, buf );
+	printf("\nTotal time %f s\n", totalTime_ms/1000. );
 
-	writeAndHandleXONXOFF( fd, buf, strlen(buf), NULL, 0 );
-#if 0
-//	for (int k= 0; k<100; k++)
-	bytes =	write( fd, buf, strlen(buf) );
-  printf ( "%ld bytes to write, %d bytes written,\n", strlen(buf), bytes );
-
+  printf ( "%ld bytes to write.\n", strlen(buf) );
+	memset(inbuff, 0, BUFSIZE );
+	long long t0 = current_timestamp();
+	char * inBuffOffset = writeAndHandleXONXOFF( fd, buf, strlen(buf), inbuff, BUFSIZE );
+	unsigned int n_sizeOffset = (unsigned int) ( inBuffOffset - inbuff );
 	tcdrain( fd );
-	sleep( ( totalTime_ms + 500 ) / 1000 );
-	
+	long long t1 = current_timestamp();
+	int passed_ms = (int) ( t1 - t0 );
+	printf ( "\nWaiting for sequence to complete.\n" );
+	sleep( ( totalTime_ms - passed_ms  + 500 ) / 1000 );
 
   ioctl(fd, FIONREAD, &bytes);
-  printf( "Bytes in buffer %d\n", bytes );
+  printf( "Bytes in buffer %d already read %d.\n", bytes, n_sizeOffset );
 	/* restore the old port settings */
-	memset(buf, 0, BUFSIZE );
-	read( fd, buf, BUFSIZE );
-  printf ("Read from tty:\n");
-  printf ("%s\n", buf);
+	int n_remain = read( fd, inBuffOffset, BUFSIZE - n_sizeOffset );
+  printf ("Read %d from tty:\n", n_remain );
+//  printf ("%s\n", inbuff);
+#if 1
   writeVcdHead( of );
-	fprintf ( of, "%s", buf );
+	fprintf ( of, "%s", inbuff );
+#endif
   fclose( of );
 
 	write( fd, "?", 1 );
   sleep( 1 );
-	memset(buf, 0, BUFSIZE );
-	read( fd, buf, BUFSIZE );
-  printf ("%s\n", buf);
-#endif
+	memset(inbuff, 0, BUFSIZE );
+	read( fd, inbuff, BUFSIZE );
+  printf ("%s\n", inbuff);
 
 	tcsetattr(fd, TCSANOW, &oldtio);
 
@@ -248,53 +252,49 @@ char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t outSize, char *inbuff
 				}
 				int n_out = i + 1 - pos; // Need to add 1 to get the last line break.
 				memcpy( tmp, outbuff + pos, n_out ); 
+#if 0
 				printf( "=%d=\n", i );
 				printf( "%s", tmp );
 				printf( "==\n" );
+#else
+				putchar( '+' );
+#endif
 				write( fd, tmp, n_out ); // Write the 10 complete events
 				pos = i + 1;
-				n_in = read( fd, tmp, 1024 );
 				state = waitForCarrageReturn;
-				for ( i = 0; i < n_in; i++ ) {
-					if ( tmp[i] != XOFF )	{ // Only need to check for XOFF here.
-						*outbuff++ = tmp[i];
-						if ( ( '\n' == tmp[i] ) && ( state != waitForXON )) {
-							state = notInWaitState;
-						} 
-					}
-					else {
-						state = waitForXON;
-					}
-				}
 				break;
 			case waitForXON:
 				n_in = read( fd, tmp, 1024 );
 				for ( i = 0; i < n_in; i++ ) {
 					if ( tmp[i] != XON )	{ // Only need to check for XON here.
-						*outbuff++ = tmp[i];
+						*inbuff++ = tmp[i];
 					}
 					else {
 						state = notInWaitState;
+						printf( "XON!\n" );
 					}
 				}
+				sleep( 0 );				
 				break;
 			case waitForCarrageReturn:
 				n_in = read( fd, tmp, 1024 );
 				for ( i = 0; i < n_in; i++ ) {
 					if ( tmp[i] != XOFF )	{ // Only need to check for XOFF here.
-						*outbuff++ = tmp[i];
+						*inbuff++ = tmp[i];
 						if ( ( '\n' == tmp[i] ) && ( state != waitForXON )) {
 							state = notInWaitState;
 						} 
 					}
 					else {
 						state = waitForXON;
+						printf( "\nXOFF!\n" );
 					}
-				}	
+				}
+				sleep( 0 );
 				break;
 		}
 	} while ( i < outSize );
-	return outbuff;
+	return inbuff;
 }
 
 void asyncInit( int fd ) {
@@ -317,7 +317,8 @@ void asyncInit( int fd ) {
 						will not terminate input)
 						otherwise make device raw (no other input processing)
 	*/
-	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF; // | ICRNL;
+//	newtio.c_iflag = IGNPAR | IGNBRK | IXON | IXOFF; // | ICRNL;
+	newtio.c_iflag = IGNPAR | IGNBRK ; //| IXON | IXOFF; // | ICRNL;
 
 	/*
 		ICANON  : enable canonical input
@@ -337,8 +338,8 @@ void asyncInit( int fd ) {
 	newtio.c_cc[VTIME]= 0;/* inter-character timer unused */
 	newtio.c_cc[VMIN]= 1;/* blocking read until 1 character arrives */
 	newtio.c_cc[VSWTC]= 0;/* '\0' */
-	newtio.c_cc[VSTART]= 17;/* Ctrl-q */ /* 0 */
-	newtio.c_cc[VSTOP]= 19;/* Ctrl-s */ /* 0 */
+	newtio.c_cc[VSTART]= XON;/* Ctrl-q */ /* 0 */
+	newtio.c_cc[VSTOP]= XOFF;/* Ctrl-s */ /* 0 */
 	newtio.c_cc[VSUSP]= 0;/* Ctrl-z */
 	newtio.c_cc[VEOL]= 0;/* '\0' */
 	newtio.c_cc[VREPRINT] = 0;/* Ctrl-r */
@@ -378,6 +379,13 @@ void writeVcdHead( FILE * of ) {
 	}
 }
 
+long long current_timestamp() {
+    struct timeval te; 
+    gettimeofday(&te, NULL); // get current time
+    long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
+    // printf("milliseconds: %lld\n", milliseconds);
+    return milliseconds;
+}
 /**
  * Trainer Commands:
  * $run
