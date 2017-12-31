@@ -30,7 +30,19 @@ const static int markSpace_ = 1;
 const static int di_ = 1;
 const static int da_ = 3;
 
+char * separators[] = {
+ "..--..", /* ? &#63; &quest; */
+ ".-.-.-", /* . &#46; &period; */
+ "--..--", /* , &#44; &comma; */
+ "-..-.",  /* / &#47; &sol; */
+ "-...-",  /* = &#61; &equlas;'åtskillnadstecken' */
+ "-....-", /* - &#8208; &dash; 'bindestreck' */
+ "-.---",  /* vänta, procedurtecken &#8730 */
+ ".. ..",  /* upprepning, procedurtecken &times; &#215; */
+};
+
 char * digits[10] = {
+
  "-----", /* 0 */
  ".----", /* 1 */
  "..---", /* 2 */
@@ -43,7 +55,7 @@ char * digits[10] = {
  "----." /* 9 */
 };
 
- char * alphas[35] = {
+char * alphas[28] = {
  ".-",    /* a */
  "-...",  /* b */
  "-.-.",  /* c */
@@ -72,12 +84,6 @@ char * digits[10] = {
  ".--.-",  /* å */
  ".-.-",   /* ä */
  "---.",   /* ö */
- ".-.-.-", /* . */
- "..--..", /* , */
- "-..-.",  /* / */
- "-...-",  /* = 'åtskillnadstecken' */
- "-....-", /* - 'bindestreck' */
- "-.---",  /* vänta */
 };
 
 const struct { int l; char * str;} wpmNorms[3] = {
