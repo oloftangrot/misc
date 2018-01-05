@@ -12,7 +12,10 @@
 
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
-char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
+//char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
+//char msg[] = "&quest; &quest; &period; &period; &comma; &comma; &wait; &wait; &dash; &dash;  &equals; &equals; &times; &times; ";
+char msg[] = "&equals; &equals; &times; &times; ";
+
 const int wpm = 12;
 const unsigned char XOFF = 19;
 const unsigned char XON  = 17;
@@ -30,7 +33,8 @@ const static int markSpace_ = 1;
 const static int di_ = 1;
 const static int da_ = 3;
 
-char * separators[] = {
+#define NUM_SEPARATORS 8
+char * separators[NUM_SEPARATORS] = {
  "..--..", /* ? &#63; &quest; */
  ".-.-.-", /* . &#46; &period; */
  "--..--", /* , &#44; &comma; */
@@ -39,6 +43,17 @@ char * separators[] = {
  "-....-", /* - &#8208; &dash; 'bindestreck' */
  "-.---",  /* vänta, procedurtecken &#8730 */
  ".. ..",  /* upprepning, procedurtecken &times; &#215; */
+};
+
+char * separators_str[NUM_SEPARATORS] = { 
+	"&quest;",
+	"&period;",
+	"&comma;",
+	"&sol;",
+	"&equals;",
+	"&dash;",
+	"&wait;",
+	"&times;"
 };
 
 char * digits[10] = {
@@ -159,7 +174,39 @@ int main ( void )
 	int n = 0;
 	for ( int i = 0; i < strlen(msg); i++ ) {
 		int j;
-		if ( ' '  != msg[i] ) {
+		if ( '&' == msg[i] ) {
+			int k, found = 0;
+			for ( k = 0; k < NUM_SEPARATORS; k++ ) {
+				if ( 0 == strncmp( &msg[i], separators_str[k], strlen( separators_str[k] ) ) ) {
+					printf( "Separator match %s\n", separators_str[k] );
+					found = 1;
+					break;
+				}
+			}
+			if ( found ) {
+				i += strlen( separators_str[k] ) - 1;
+				char * p = separators[k];
+				for ( j = 0; j < strlen(p); j++ ) {
+					if ('.' == p[j] ) {
+						printf ( "/%d", di_ );
+						n += sprintf( buf+n, "/%d\n", di_ * diTime );
+						totalTime_ms += di_ * diTime;
+					}
+			    else if ( '-' == p[j] ) {
+						printf ( "/%d", da_ );
+						n += sprintf( buf+n, "/%d\n", da_ * diTime );
+						totalTime_ms += da_ * diTime;
+					}
+					else printf ("? " );
+					if ( j < (strlen(p) - 1)) { 
+						printf("\\%d", markSpace_ );
+						n += sprintf( buf+n, "\\%d\n", markSpace_ * diTime );
+						totalTime_ms += markSpace_ * diTime;
+					}
+				}
+			}
+		}
+		else if ( ' '  != msg[i] ) {
 			char * p;
 			if( isdigit( msg[i] ) ) p = digits[msg[i] - '0'];
 		  else p = alphas[msg[i] - 'A'];	
