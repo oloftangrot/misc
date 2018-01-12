@@ -13,8 +13,8 @@
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
 //char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
-//char msg[] = "&quest; &quest; &period; &period; &comma; &comma; &wait; &wait; &dash; &dash;  &equals; &equals; &times; &times; ";
-char msg[] = "&equals; &equals; &times; &times; ";
+char msg[] = "&sol; &sol; &quest; &quest; &period; &period; &comma; &comma; &wait; &wait; &dash; &dash; &equals; &equals; &times; &times; ";
+//char msg[] = "&equals; &equals; &times; &times; ";
 
 const int wpm = 12;
 const unsigned char XOFF = 19;
@@ -197,13 +197,19 @@ int main ( void )
 						n += sprintf( buf+n, "/%d\n", da_ * diTime );
 						totalTime_ms += da_ * diTime;
 					}
-					else printf ("? " );
+					else { 
+						printf ("? at %d ", j );
+					}
 					if ( j < (strlen(p) - 1)) { 
 						printf("\\%d", markSpace_ );
 						n += sprintf( buf+n, "\\%d\n", markSpace_ * diTime );
 						totalTime_ms += markSpace_ * diTime;
 					}
 				}
+			}
+			else {
+				printf( "Faulty or unknown separator string starting at position %d!", i );
+				exit( 0 );
 			}
 		}
 		else if ( ' '  != msg[i] ) {
