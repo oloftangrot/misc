@@ -13,9 +13,10 @@
 //char msg[] = "OLOF HEJ";
 //char msg[] = "H  H  H  H  ";
 //char msg[] = "SA2KAA SA2KAA SA2KAA SA2KAA ";
-char msg[] = "&sol; &sol; &quest; &quest; &period; &period; &comma; &comma; &wait; &wait; &dash; &dash; &equals; &equals; &times; &times; ";
+char defaultMsg[] = "&sol; &sol; &quest; &quest; &period; &period; &comma; &comma; &radic; &radic; &dash; &dash; &equals; &equals; &times; &times; ";
 //char msg[] = "&equals; &equals; &times; &times; ";
 
+char * msg = defaultMsg;
 const int wpm = 12;
 const unsigned char XOFF = 19;
 const unsigned char XON  = 17;
@@ -41,8 +42,8 @@ char * separators[NUM_SEPARATORS] = {
  "-..-.",  /* / &#47; &sol; */
  "-...-",  /* = &#61; &equlas;'åtskillnadstecken' */
  "-....-", /* - &#8208; &dash; 'bindestreck' */
- "-.---",  /* vänta, procedurtecken &#8730 */
- ".. ..",  /* upprepning, procedurtecken &times; &#215; */
+ "-.---",  /*   &#8730, &radic; vänta  */
+ ".. ..",  /*   &#215; &times; upprepning, procedurtecken */
 };
 
 char * separators_str[NUM_SEPARATORS] = { 
@@ -52,7 +53,7 @@ char * separators_str[NUM_SEPARATORS] = {
 	"&sol;",
 	"&equals;",
 	"&dash;",
-	"&wait;",
+	"&radic;",
 	"&times;"
 };
 
@@ -70,7 +71,7 @@ char * digits[10] = {
  "----." /* 9 */
 };
 
-char * alphas[28] = {
+char * alphas[29] = {
  ".-",    /* a */
  "-...",  /* b */
  "-.-.",  /* c */
@@ -93,6 +94,7 @@ char * alphas[28] = {
  "-",			/* t */
  "..-",    /* u */
  "...-",   /* v */
+ ".--",    /* w */
  "-..-",   /* x */
  "-.--",   /* y */
  "--..",   /* z */
@@ -119,25 +121,61 @@ void asyncInit( int fd );
 void writeVcdHead( FILE * of );
 char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
 long long current_timestamp();
+void parseCommandLine( int argc, char * argv[] );
 
 #define BUFSIZE 10000
 
 char buf[BUFSIZE];
 char inbuff[BUFSIZE];
+int useInFile = -1; 
 
-int main ( void )
+int main ( int argc, char * argv[] )
 {
 	int fd;
-	FILE *of; 
+	char *fileInBuffer;
+	FILE *of;
+	FILE *infile;
 	int totalTime_ms = 0;
   int bytes, status;
 	struct termios oldtio;
 	unsigned short seqNo __attribute__((unused)) = 0  ;
   unsigned short diTime = getDotTimeIn_ms(wpm, 0);
+
+	if ( argc > 1 ) parseCommandLine( argc, argv );
+
+	if ( useInFile > 0 ) {
+		infile = fopen( argv[useInFile], "r" );
+		if ( NULL == infile ) {
+			fprintf( stderr, "Failed to open file %s\n", argv[useInFile] );
+			exit( 0 );
+		}
+		else {
+			fseek( infile, 0L, SEEK_END );
+			size_t fileSize = ftell( infile );
+			fseek( infile, 0L, SEEK_SET ); // rewind
+			if ( 0 == fileSize ) {
+				fprintf( stderr, "Error! File is empty.\n" );
+				exit( 0 );
+			}
+		
+			fileInBuffer = malloc( fileSize + 1 );
+			if ( NULL == fileInBuffer ) {
+				fprintf( stderr, "Error! Can not allocate file input memory.\n" );
+				exit( 0 );
+			}
+			memset( fileInBuffer, 0, fileSize + 1 );
+			size_t res = fread( fileInBuffer, fileSize, 1, infile );
+			printf( "%lu to read from file, %lu elements found.\n", fileSize, res );
+			printf( "File content size: %lu\n", strlen( fileInBuffer) );
+			msg = fileInBuffer;
+		}
+	}	
+
 	printf( "Baud %d %f\n", wpm, getBaud(wpm, 0) );
 	printf( "Dot time %d %f\n", wpm, (float) diTime);
   printf( "Char rate %d\n", wpm * 5 );
 
+	
 	of = fopen( "out.vcd", "w" );
   if ( NULL == of ) {
 		fprintf( stderr, "Error opening file!\n" );
@@ -189,7 +227,7 @@ int main ( void )
 				for ( j = 0; j < strlen(p); j++ ) {
 					if ('.' == p[j] ) {
 						printf ( "/%d", di_ );
-						n += sprintf( buf+n, "/%d\n", di_ * diTime );
+						n += sprintf( buf + n, "/%d\n", di_ * diTime );
 						totalTime_ms += di_ * diTime;
 					}
 			    else if ( '-' == p[j] ) {
@@ -197,13 +235,23 @@ int main ( void )
 						n += sprintf( buf+n, "/%d\n", da_ * diTime );
 						totalTime_ms += da_ * diTime;
 					}
+					else if ( ' ' == p[j] ) {
+						; // Accept in char space as valid.
+					}
 					else { 
 						printf ("? at %d ", j );
 					}
-					if ( j < (strlen(p) - 1)) { 
-						printf("\\%d", markSpace_ );
-						n += sprintf( buf+n, "\\%d\n", markSpace_ * diTime );
-						totalTime_ms += markSpace_ * diTime;
+					if ( j < ( strlen( p ) - 1 ) ) { 
+						if ( ' ' != p[j + 1] ) { // Look a bit ahead.
+							printf( "\\%d", markSpace_ );
+							n += sprintf( buf + n, "\\%d\n", markSpace_ * diTime );
+							totalTime_ms += markSpace_ * diTime;
+						}
+						else {
+							printf( "\\%d", 2 * markSpace_ );
+							n += sprintf( buf + n, "\\%d\n", 2 * markSpace_ * diTime );
+							totalTime_ms += 2 * markSpace_ * diTime;
+						}
 					}
 				}
 			}
@@ -217,7 +265,7 @@ int main ( void )
 			if( isdigit( msg[i] ) ) p = digits[msg[i] - '0'];
 		  else p = alphas[msg[i] - 'A'];	
 	    for ( j = 0; j < strlen(p); j++ ) {
-			  if ('.' == p[j] ) {
+			  if ( '.' == p[j] ) {
 					printf ( "/%d", di_ );
 					n += sprintf( buf+n, "/%d\n", di_ * diTime );
 					totalTime_ms += di_ * diTime;
@@ -246,6 +294,11 @@ int main ( void )
 					n += sprintf( buf+n, "\\%d\n", wordSpace_ * diTime );
 					totalTime_ms += wordSpace_ * diTime;
 		}
+	}
+
+	if ( useInFile ) {
+		free( fileInBuffer );
+		fclose( infile );
 	}
 
 //	printf("\nSequence count %d:\n%s\n", seqNo, buf );
@@ -281,7 +334,6 @@ int main ( void )
   printf ("%s\n", inbuff);
 
 	tcsetattr(fd, TCSANOW, &oldtio);
-
 	return 0;
 }
 
@@ -444,6 +496,43 @@ long long current_timestamp() {
     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
     // printf("milliseconds: %lld\n", milliseconds);
     return milliseconds;
+}
+
+char const * const options[] = {
+	"--infile",
+	"--outfile",
+	"--help"
+};
+
+enum {
+	INFILE_ENUM,
+	OUTFILE_ENUM,
+	HELP_ENUM,
+	NUM_OPTIONS
+};
+
+void parseCommandLine( int argc, char * argv[] ) 
+{
+	for ( int i = 0; i < argc; i++ ) {
+		for ( int j = 0; j < NUM_OPTIONS; j++ ) {
+			if ( 0 == strncmp( argv[i], options[j], strlen( options[j] ) ) ) {
+				switch ( j ) {
+					case INFILE_ENUM:
+						i++;
+						if ( i >= argc ) {
+							fprintf( stderr, "Error! No file name given." );
+							exit( 0 );
+						}
+						useInFile = i; 
+						break;
+					case OUTFILE_ENUM:
+						printf( "Hello world2!");
+						exit(0);
+						break;
+				}
+			}
+		}
+	}
 }
 /**
  * Trainer Commands:

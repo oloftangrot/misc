@@ -2,7 +2,7 @@ all: morseEncoder
 
 
 morseEncoder: morseEncoder.c
-	gcc -Wall -o $@ $^
+	gcc -g -Wall -o $@ $^
 
 clean:
 	rm morseEncoder
