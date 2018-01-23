@@ -34,8 +34,8 @@ const static int markSpace_ = 1;
 const static int di_ = 1;
 const static int da_ = 3;
 
-#define NUM_SEPARATORS 8
-char * separators[NUM_SEPARATORS] = {
+#define NUM_SPECIALS 11
+char * specials[NUM_SPECIALS] = {
  "..--..", /* ? &#63; &quest; */
  ".-.-.-", /* . &#46; &period; */
  "--..--", /* , &#44; &comma; */
@@ -44,9 +44,12 @@ char * separators[NUM_SEPARATORS] = {
  "-....-", /* - &#8208; &dash; 'bindestreck' */
  "-.---",  /*   &#8730, &radic; vänta  */
  ".. ..",  /*   &#215; &times; upprepning, procedurtecken */
+ ".--.-",  /* å */
+ ".-.-",   /* ä */
+ "---.",   /* ö */
 };
 
-char * separators_str[NUM_SEPARATORS] = { 
+char * specials_str[NUM_SPECIALS] = { 
 	"&quest;",
 	"&period;",
 	"&comma;",
@@ -54,7 +57,10 @@ char * separators_str[NUM_SEPARATORS] = {
 	"&equals;",
 	"&dash;",
 	"&radic;",
-	"&times;"
+	"&times;",
+	"&Aring;",
+	"&Auml;",
+	"&Ouml;"
 };
 
 char * digits[10] = {
@@ -71,7 +77,7 @@ char * digits[10] = {
  "----." /* 9 */
 };
 
-char * alphas[29] = {
+char * alphas[27] = {
  ".-",    /* a */
  "-...",  /* b */
  "-.-.",  /* c */
@@ -98,9 +104,6 @@ char * alphas[29] = {
  "-..-",   /* x */
  "-.--",   /* y */
  "--..",   /* z */
- ".--.-",  /* å */
- ".-.-",   /* ä */
- "---.",   /* ö */
 };
 
 const struct { int l; char * str;} wpmNorms[3] = {
@@ -122,6 +125,7 @@ void writeVcdHead( FILE * of );
 char* writeAndHandleXONXOFF( int fd, char *outbuff, size_t out_size, char *inbuff, size_t in_size );
 long long current_timestamp();
 void parseCommandLine( int argc, char * argv[] );
+void myExit( int ttyFd, struct termios * restoreTios );
 
 #define BUFSIZE 10000
 
@@ -131,7 +135,7 @@ int useInFile = -1;
 
 int main ( int argc, char * argv[] )
 {
-	int fd;
+	int fd = -1;
 	char *fileInBuffer;
 	FILE *of;
 	FILE *infile;
@@ -189,21 +193,22 @@ int main ( int argc, char * argv[] )
 	fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY );
 
 	if ( fd < 0 ) {
-		perror(MODEMDEVICE); exit( -1 ); 
+		perror( MODEMDEVICE ); 
+    exit( -1 ); 
 	}
 
 	tcgetattr( fd, &oldtio ); /* save current serial port settings */
 	asyncInit( fd );
 
-  ioctl(fd, TIOCMGET, &status);
+  ioctl( fd, TIOCMGET, &status );
 	status |= TIOCM_DTR;
-	ioctl(fd, TIOCMSET, status); // Ensure the Arduino is not held in reset
+	ioctl( fd, TIOCMSET, status ); // Ensure the Arduino is not held in reset
 
 #if 1
 	read( fd, buf, BUFSIZE );
 	if ( '>' != buf[0] ) {
 		printf( "Wrong start promt!\n" );
-		exit( 0 );
+		myExit( fd, &oldtio ); // Quit program
   }
 #endif
 
@@ -214,16 +219,16 @@ int main ( int argc, char * argv[] )
 		int j;
 		if ( '&' == msg[i] ) {
 			int k, found = 0;
-			for ( k = 0; k < NUM_SEPARATORS; k++ ) {
-				if ( 0 == strncmp( &msg[i], separators_str[k], strlen( separators_str[k] ) ) ) {
-					printf( "Separator match %s\n", separators_str[k] );
+			for ( k = 0; k < NUM_SPECIALS; k++ ) {
+				if ( 0 == strncmp( &msg[i], specials_str[k], strlen( specials_str[k] ) ) ) {
+					printf( "Separator match %s\n", specials_str[k] );
 					found = 1;
 					break;
 				}
 			}
 			if ( found ) {
-				i += strlen( separators_str[k] ) - 1;
-				char * p = separators[k];
+				i += strlen( specials_str[k] ) - 1;
+				char * p = specials[k];
 				for ( j = 0; j < strlen(p); j++ ) {
 					if ('.' == p[j] ) {
 						printf ( "/%d", di_ );
@@ -256,14 +261,23 @@ int main ( int argc, char * argv[] )
 				}
 			}
 			else {
-				printf( "Faulty or unknown separator string starting at position %d!", i );
-				exit( 0 );
+				printf( "Faulty or unknown separator string starting at position %d!\n", i );
+				myExit( fd, &oldtio ); // Quit program
 			}
 		}
 		else if ( ' '  != msg[i] ) {
 			char * p;
-			if( isdigit( msg[i] ) ) p = digits[msg[i] - '0'];
-		  else p = alphas[msg[i] - 'A'];	
+			if( isdigit( msg[i] ) ) { 
+				p = digits[msg[i] - '0'];
+			}
+			else if ( isalpha( msg[i] ) ) {
+				p = alphas[msg[i] - 'A'];	
+			}
+		  else {
+				fprintf( stderr, "Error in data at %d value %d\n", i, msg[i] );
+				continue;
+				//myExit( fd, &oldtio ); // Quit program
+			}
 	    for ( j = 0; j < strlen(p); j++ ) {
 			  if ( '.' == p[j] ) {
 					printf ( "/%d", di_ );
@@ -285,14 +299,14 @@ int main ( int argc, char * argv[] )
 	  
 	  	if ( msg[i+1] != ' ' ) {
 				printf ("\\%d", charSpace_ ); 	
-					n += sprintf( buf+n, "\\%d\n", charSpace_ * diTime );
-					totalTime_ms += charSpace_ * diTime;
+				n += sprintf( buf+n, "\\%d\n", charSpace_ * diTime );
+				totalTime_ms += charSpace_ * diTime;
 			}
 		}
 		else {
 			printf ("\\%d", wordSpace_ );
-					n += sprintf( buf+n, "\\%d\n", wordSpace_ * diTime );
-					totalTime_ms += wordSpace_ * diTime;
+			n += sprintf( buf+n, "\\%d\n", wordSpace_ * diTime );
+			totalTime_ms += wordSpace_ * diTime;
 		}
 	}
 
@@ -302,10 +316,10 @@ int main ( int argc, char * argv[] )
 	}
 
 //	printf("\nSequence count %d:\n%s\n", seqNo, buf );
-	printf("\nTotal time %f s\n", totalTime_ms/1000. );
+	printf("\nTotal time %f s\n", totalTime_ms / 1000. );
 
   printf ( "%ld bytes to write.\n", strlen(buf) );
-	memset(inbuff, 0, BUFSIZE );
+	memset( inbuff, 0, BUFSIZE );
 	long long t0 = current_timestamp();
 	char * inBuffOffset = writeAndHandleXONXOFF( fd, buf, strlen(buf), inbuff, BUFSIZE );
 	unsigned int n_sizeOffset = (unsigned int) ( inBuffOffset - inbuff );
@@ -315,11 +329,11 @@ int main ( int argc, char * argv[] )
 	printf ( "\nWaiting for sequence to complete.\n" );
 	sleep( ( totalTime_ms - passed_ms  + 500 ) / 1000 );
 
-  ioctl(fd, FIONREAD, &bytes);
+  ioctl( fd, FIONREAD, &bytes );
   printf( "Bytes in buffer %d already read %d.\n", bytes, n_sizeOffset );
 	/* restore the old port settings */
 	int n_remain = read( fd, inBuffOffset, BUFSIZE - n_sizeOffset );
-  printf ("Read %d from tty:\n", n_remain );
+  printf ( "Read %d from tty:\n", n_remain );
 //  printf ("%s\n", inbuff);
 #if 1
   writeVcdHead( of );
@@ -333,7 +347,7 @@ int main ( int argc, char * argv[] )
 	read( fd, inbuff, BUFSIZE );
   printf ("%s\n", inbuff);
 
-	tcsetattr(fd, TCSANOW, &oldtio);
+	myExit( fd, &oldtio ); // Quit program
 	return 0;
 }
 
@@ -534,6 +548,19 @@ void parseCommandLine( int argc, char * argv[] )
 		}
 	}
 }
+
+void myExit( int ttyFd, struct termios * restoreTios ) 
+{
+	if ( ttyFd < 0 ) {
+		printf( "Terminate with not open tty-device.\n" );
+		exit( 0 );
+	}
+	printf( "Closing tty-device and exit.\n" );
+	tcsetattr(ttyFd, TCSANOW, restoreTios);
+	close( ttyFd );
+	exit( 0 );
+}
+
 /**
  * Trainer Commands:
  * $run
