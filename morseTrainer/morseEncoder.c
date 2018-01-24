@@ -33,6 +33,7 @@ const static int charSpace_ = 3;
 const static int markSpace_ = 1;
 const static int di_ = 1;
 const static int da_ = 3;
+static int useTTY_ = 1;
 
 #define NUM_SPECIALS 11
 char * specials[NUM_SPECIALS] = {
@@ -190,28 +191,29 @@ int main ( int argc, char * argv[] )
 		Open modem device for reading and writing and not as controlling tty
 		because we don't want to get killed if linenoise sends CTRL-C.
 	*/
-	fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY );
+	if ( useTTY_ ) {
+		fd = open(MODEMDEVICE, O_RDWR | O_NOCTTY );
 
-	if ( fd < 0 ) {
-		perror( MODEMDEVICE ); 
-    exit( -1 ); 
+		if ( fd < 0 ) {
+			perror( MODEMDEVICE ); 
+		  exit( -1 ); 
+		}
+
+		tcgetattr( fd, &oldtio ); /* save current serial port settings */
+		asyncInit( fd );
+
+		ioctl( fd, TIOCMGET, &status );
+		status |= TIOCM_DTR;
+		ioctl( fd, TIOCMSET, status ); // Ensure the Arduino is not held in reset
+
+	#if 1
+		read( fd, buf, BUFSIZE );
+		if ( '>' != buf[0] ) {
+			printf( "Wrong start promt!\n" );
+			myExit( fd, &oldtio ); // Quit program
+		}
+	#endif
 	}
-
-	tcgetattr( fd, &oldtio ); /* save current serial port settings */
-	asyncInit( fd );
-
-  ioctl( fd, TIOCMGET, &status );
-	status |= TIOCM_DTR;
-	ioctl( fd, TIOCMSET, status ); // Ensure the Arduino is not held in reset
-
-#if 1
-	read( fd, buf, BUFSIZE );
-	if ( '>' != buf[0] ) {
-		printf( "Wrong start promt!\n" );
-		myExit( fd, &oldtio ); // Quit program
-  }
-#endif
-
 	printf("Init done\n");
 
 	int n = 0;
@@ -221,7 +223,7 @@ int main ( int argc, char * argv[] )
 			int k, found = 0;
 			for ( k = 0; k < NUM_SPECIALS; k++ ) {
 				if ( 0 == strncmp( &msg[i], specials_str[k], strlen( specials_str[k] ) ) ) {
-					printf( "Separator match %s\n", specials_str[k] );
+//				printf( "Separator match %s\n", specials_str[k] );
 					found = 1;
 					break;
 				}
@@ -264,6 +266,11 @@ int main ( int argc, char * argv[] )
 				printf( "Faulty or unknown separator string starting at position %d!\n", i );
 				myExit( fd, &oldtio ); // Quit program
 			}
+	  	if ( msg[i+1] != ' ' ) { 
+				printf ("\\%d", charSpace_ ); 	
+				n += sprintf( buf+n, "\\%d\n", charSpace_ * diTime );
+				totalTime_ms += charSpace_ * diTime;
+			}
 		}
 		else if ( ' '  != msg[i] ) {
 			char * p;
@@ -271,7 +278,7 @@ int main ( int argc, char * argv[] )
 				p = digits[msg[i] - '0'];
 			}
 			else if ( isalpha( msg[i] ) ) {
-				p = alphas[msg[i] - 'A'];	
+				p = alphas[toupper( msg[i] ) - 'A'];	
 			}
 		  else {
 				fprintf( stderr, "Error in data at %d value %d\n", i, msg[i] );
@@ -317,37 +324,39 @@ int main ( int argc, char * argv[] )
 
 //	printf("\nSequence count %d:\n%s\n", seqNo, buf );
 	printf("\nTotal time %f s\n", totalTime_ms / 1000. );
+	if ( useTTY_ ) {
+		printf ( "%ld bytes to write.\n", strlen(buf) );
+		memset( inbuff, 0, BUFSIZE );
+		long long t0 = current_timestamp();
+		char * inBuffOffset = writeAndHandleXONXOFF( fd, buf, strlen(buf), inbuff, BUFSIZE );
+		unsigned int n_sizeOffset = (unsigned int) ( inBuffOffset - inbuff );
+		tcdrain( fd );
+		long long t1 = current_timestamp();
+		int passed_ms = (int) ( t1 - t0 );
+		printf ( "\nWaiting for sequence to complete.\n" );
+		sleep( ( totalTime_ms - passed_ms  + 500 ) / 1000 );
 
-  printf ( "%ld bytes to write.\n", strlen(buf) );
-	memset( inbuff, 0, BUFSIZE );
-	long long t0 = current_timestamp();
-	char * inBuffOffset = writeAndHandleXONXOFF( fd, buf, strlen(buf), inbuff, BUFSIZE );
-	unsigned int n_sizeOffset = (unsigned int) ( inBuffOffset - inbuff );
-	tcdrain( fd );
-	long long t1 = current_timestamp();
-	int passed_ms = (int) ( t1 - t0 );
-	printf ( "\nWaiting for sequence to complete.\n" );
-	sleep( ( totalTime_ms - passed_ms  + 500 ) / 1000 );
-
-  ioctl( fd, FIONREAD, &bytes );
-  printf( "Bytes in buffer %d already read %d.\n", bytes, n_sizeOffset );
-	/* restore the old port settings */
-	int n_remain = read( fd, inBuffOffset, BUFSIZE - n_sizeOffset );
-  printf ( "Read %d from tty:\n", n_remain );
-//  printf ("%s\n", inbuff);
+		ioctl( fd, FIONREAD, &bytes );
+		printf( "Bytes in buffer %d already read %d.\n", bytes, n_sizeOffset );
+		/* restore the old port settings */
+		int n_remain = read( fd, inBuffOffset, BUFSIZE - n_sizeOffset );
+		printf ( "Read %d from tty:\n", n_remain );
+	//  printf ("%s\n", inbuff);
+	}
 #if 1
   writeVcdHead( of );
 	fprintf ( of, "%s", inbuff );
 #endif
   fclose( of );
 
-	write( fd, "?", 1 );
-  sleep( 1 );
-	memset(inbuff, 0, BUFSIZE );
-	read( fd, inbuff, BUFSIZE );
-  printf ("%s\n", inbuff);
-
-	myExit( fd, &oldtio ); // Quit program
+	if ( useTTY_ ) {
+		write( fd, "?", 1 );
+		sleep( 1 );
+		memset(inbuff, 0, BUFSIZE );
+		read( fd, inbuff, BUFSIZE );
+		printf ("%s\n", inbuff);
+		myExit( fd, &oldtio ); // Quit program
+	}
 	return 0;
 }
 
@@ -515,12 +524,14 @@ long long current_timestamp() {
 char const * const options[] = {
 	"--infile",
 	"--outfile",
+	"--notty",
 	"--help"
 };
 
 enum {
 	INFILE_ENUM,
 	OUTFILE_ENUM,
+	NOTTY_ENUM,
 	HELP_ENUM,
 	NUM_OPTIONS
 };
@@ -542,6 +553,9 @@ void parseCommandLine( int argc, char * argv[] )
 					case OUTFILE_ENUM:
 						printf( "Hello world2!");
 						exit(0);
+						break;
+					case NOTTY_ENUM:
+						useTTY_ = 0;
 						break;
 				}
 			}
