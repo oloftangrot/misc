@@ -1,0 +1,5 @@
+sudo apt install libode-dev
+sudo pip install pyode
+sudo pip install pygame
+
+sudo pip install PyOpenGL PyOpenGL_accelerate
