@@ -9,8 +9,8 @@
  */
 struct coincidence {
 	unsigned int delta;
-	unsigned int a_time;
-	unsigned int b_time;
+	unsigned int a_t;
+	unsigned int b_t;
 	bool a_start;
 	bool b_start;
 	bool a_prev;
@@ -18,65 +18,58 @@ struct coincidence {
 	bool out;
 };
 
-bool coincidence_detector(bool a, bool b, unsigned int t) 
-{
-    const unsigned int delta = 100;
-    static unsigned int a_t = 0;
-    static unsigned int b_t = 0;
-    static bool a_prev = 0;
-    static bool b_prev = 0;
-    static int out = 0;
-    static bool a_start = false;
-    static bool b_start = false;
+struct coincidence butt1 = {100,0,0,0,0,0,0,0};
 
+bool coincidence_detector(struct coincidence *c,bool a, bool b, unsigned int t) 
+{
 	printf("%u %u %u ", a, b, t);
-    if ((2 == ((a<<1))+a_prev)) { // Rising edge
-//        printf("Prev A %u Rise A\n",a_prev);
-        a_t = t;
-        a_start = true;
+    if ((2 == ((a<<1))+c->a_prev)) { // Rising edge
+//        printf("Prev A %u Rise A\n",c->a_prev);
+        c->a_t = t;
+        c->a_start = true;
     }
-    if ((2 == ((b<<1))+b_prev)) { // Rising edge
+    if ((2 == ((b<<1))+c->b_prev)) { // Rising edge
 //        printf("Rise B\n");
-        b_t =t;
-        b_start = true;
+        c->b_t =t;
+        c->b_start = true;
     }
-    if (a && b && a_start && b_start) {
-        if (a_t > b_t) {
-            if ((a_t - b_t) < delta) {
-                out = true;
+    if (a && b && c->a_start && c->b_start) {
+        if (c->a_t > c->b_t) {
+            if ((c->a_t - c->b_t) < c->delta) {
+                c->out = true;
             }
             else {
-                out = false;
+                c->out = false;
 				// Clear time measurment flags on time out.
-				a_start = false;
-				b_start = false;
+				c->a_start = false;
+				c->b_start = false;
             }
         }
-        else if (b_t > a_t) {
-            if ((b_t - a_t) < delta) {
-                out = true;
+        else if (c->b_t > c->a_t) {
+            if ((c->b_t - c->a_t) < c->delta) {
+                c->out = true;
             }
             else {
-                out = false;
+                c->out = false;
 				// Clear time measurment flags on time out.
-				a_start = false;
-				b_start = false;
+				c->a_start = false;
+				c->b_start = false;
             }
         }
         else { // a_t == b_t
-            out = true;
+            c->out = true;
         }
     }
-    if ((1 == ((a<<1))+a_prev)) { // Falling edge
-        a_start = false;
+    if ((1 == ((a<<1))+c->a_prev)) { // Falling edge
+        c->a_start = false;
     }
-    if ((1 == ((b<<1))+b_prev)) { // Falling edge
-        b_start = false;
+    if ((1 == ((b<<1))+c->b_prev)) { // Falling edge
+        c->b_start = false;
     }
-    if (!a || !b) out = false;
-    a_prev = a;
-    b_prev = b;
-    return out;
+    if (!a || !b) c->out = false;
+    c->a_prev = a;
+    c->b_prev = b;
+    return c->out;
 }
 /*
  * Increment time s units and save.
@@ -92,16 +85,16 @@ int main(void)
 {
     int res;
 #if 1
-    res =  coincidence_detector(1,0,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,1,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,1,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,0,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,1,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(0,1,step(40)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,1,step(49)); printf("Out %d\n", res);
-    res =  coincidence_detector(0,0,step(1)); printf("Out %d\n", res);
-    res =  coincidence_detector(0,1,step(10)); printf("Out %d\n", res);
-    res =  coincidence_detector(1,1,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,0,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,1,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,1,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,0,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,1,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,0,1,step(40)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,1,step(49)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,0,0,step(1)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,0,1,step(10)); printf("Out %d\n", res);
+    res =  coincidence_detector(&butt1,1,1,step(10)); printf("Out %d\n", res);
 #endif
 #if 0
     res =  coincidence_detector(1,0,10); printf("Out %d\n", res);
