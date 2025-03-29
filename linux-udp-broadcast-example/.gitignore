@@ -1,3 +1,7 @@
+*.o
+b_client
+b_server
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db

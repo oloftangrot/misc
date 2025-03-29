@@ -4,7 +4,7 @@ OBJS_CLIENT = b_client.o
 LIBS_SERVER = 
 LIBS_CLIENT = 
 
-CFLAGS = -c
+CFLAGS = -c -Wall
 CC = gcc
 
 PROS = b_client b_server
