@@ -1,6 +1,7 @@
 #include <arpa/inet.h> 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <sys/types.h>
 #include <linux/in.h>
 #include <sys/socket.h>
@@ -19,9 +20,12 @@ int main() {
   int count;
   int ret;
   fd_set readfd;
-  char buffer[1024]={0};
+  char buffer[1024] = { 0 };
   int i;
-  
+  struct timespec tim;
+  tim.tv_sec = 1;
+  tim.tv_nsec = 0;
+//  tim.tv_nsec = 500000000;
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("sock error");
@@ -40,7 +44,7 @@ int main() {
   broadcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
   broadcast_addr.sin_port = htons(PORT);
 
-  for (i=0;i<3;i++) {
+  for ( i = 0; i < 100; i++ ) {
     ret = sendto(sock, IP_FOUND, strlen(IP_FOUND), 0, (struct sockaddr*) &broadcast_addr, addr_len);
 
     FD_ZERO(&readfd);
@@ -48,7 +52,7 @@ int main() {
 
     ret = select(sock + 1, &readfd, NULL, NULL, NULL);
 
-    if (ret > 0) {
+    if ( ret > 0 ) {
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&server_addr, &addr_len);
         (void) count; // Silence -Wall compiler warning.
@@ -58,7 +62,7 @@ int main() {
         }
       }
     }
-
+		nanosleep( &tim , NULL) ;
   }
 }
 

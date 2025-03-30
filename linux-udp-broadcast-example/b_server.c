@@ -21,7 +21,7 @@ int main() {
   int count;
   int ret;
   fd_set readfd;
-  char buffer[1024] = {0};
+  char buffer[1024] = { 0 };
 
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
@@ -59,6 +59,5 @@ int main() {
         }
       }
     }
-
   }
 }
