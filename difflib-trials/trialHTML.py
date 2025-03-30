@@ -27,8 +27,18 @@ adipiscing. Duis vulputate tristique enim. Donec quis lectus a justo
 imperdiet tempus. Suspendisse eu lectus. In nunc. """
 text2_lines = text2.splitlines()
 
+text3 = """Det var en gång en flicka
+som red uppå ett svin."""
+
+text4 = """Det var en gång ett flicka
+som red uppå en svin."""
+
+text3_lines= text3.splitlines()
+text4_lines= text4.splitlines()
 
 d = difflib.HtmlDiff()
-#print( d.make_table(text1_lines, text2_lines))
-print( d.make_file(text1_lines, text2_lines))
 
+#print( d.make_table(text1_lines, text2_lines))
+#print( d.make_table(text3_lines, text4_lines))
+print( d.make_file(text1_lines, text2_lines))
+print( d.make_file(text3_lines, text4_lines))
