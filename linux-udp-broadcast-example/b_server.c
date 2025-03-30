@@ -14,14 +14,14 @@
 
 int main() {
   int sock;
-  int yes = 1;
+//  int yes = 1;
   struct sockaddr_in client_addr;
   struct sockaddr_in server_addr;
-  int addr_len;
+  socklen_t addr_len;
   int count;
   int ret;
   fd_set readfd;
-  char buffer[1024];
+  char buffer[1024] = {0};
 
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
@@ -55,6 +55,7 @@ int main() {
 
             memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK)+1);
             count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_len);
+            (void) count; // Silence -Wall compiler warning.
         }
       }
     }

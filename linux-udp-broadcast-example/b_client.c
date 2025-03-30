@@ -12,14 +12,14 @@
 
 int main() {
   int sock;
-  int yes = 1;
+ 	int yes = 1;
   struct sockaddr_in broadcast_addr;
   struct sockaddr_in server_addr;
-  int addr_len;
+  socklen_t addr_len;
   int count;
   int ret;
   fd_set readfd;
-  char buffer[1024];
+  char buffer[1024]={0};
   int i;
   
   sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -51,6 +51,7 @@ int main() {
     if (ret > 0) {
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&server_addr, &addr_len);
+        (void) count; // Silence -Wall compiler warning.
         printf("\trecvmsg is %s\n", buffer);
         if (strstr(buffer, IP_FOUND_ACK)) {
           printf("\tfound server IP is %s, Port is %d\n", inet_ntoa(server_addr.sin_addr),htons(server_addr.sin_port));
