@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <ncurses.h>
 #include <time.h>
+#include <unistd.h> /* usleep() */
 
-struct {double a1,a2,o1;} xorData[4] = {{0.,0.,0.},{1.,0.,0.},{0.,1.,0.},{1.,1.,1.}};
+struct {double a1,a2,o1;} xorData[4] = {{0.,0.,0.},{1.,0.,1.},{0.,1.,1.},{1.,1.,0.}};
 
 const int samples =4;
 const int idata = 2;
@@ -11,18 +12,18 @@ const int hidden = 4;
 const int odata = 1;
 
 
-double sample[samples][idata];	// Sample data for training
+double sample[samples][idata];  	// Sample data for training
 double ipdata[idata];			// Input data for network
-double iout[idata];				// Output data from input units
+double iout[idata];		       	// Output data from input units
 double wih[idata][hidden];		// Weights between input and hidden units
 double hin[idata][hidden];		// Input data to hidden units
 double hsum[hidden];			// Sum of inputs to hidden units
 double hout[hidden];			// Output data from hidden units
 double who[hidden][odata];		// Weights between hidden an output units
 double oin[odata][hidden];		// Input data to output units
-double osum[odata];				// Sum of inputs to output units
-double oout[odata];				// Output data from output units
-double dout[samples];           // Desired output
+double osum[odata];			// Sum of inputs to output units
+double oout[odata];			// Output data from output units
+double dout[samples][odata];            // Desired output
 double obeta[odata];			// Error derivate for output units
 double hbeta[hidden];			// Error derivate for hidden units
 double hthr[hidden];			// Hidden threshold value
@@ -30,7 +31,7 @@ double othr[odata];				// Output threshold value
 double oerror[samples]; 		// Network error
 
 const double delta = 0.5 ;  // Setp size for weight adjustment
-const double tolerance = 0.1; // Error tolerance for network
+const double tolerance = 0.00001; // Error tolerance for network
 
 const char * inFileName = "example.dat";
 const char * outFileName = "example.wht";
@@ -41,7 +42,7 @@ int pass = 0;
 void adjustWeights(void);
 void calculateErrorForOutputLayer(int);
 void calculateErrorForHiddenLayer(int);
-void calculateNetworkError(int); 
+void calculateNetworkError(int);
 void calculateOutputs(int);
 void checkForConvergence(void);
 void displayTitles(void);
@@ -63,6 +64,7 @@ int main ( void ) {
 	printw("Start %s", buf );
 	refresh();
 	trainingMode();
+	T = time(NULL);
 	tm = *localtime(&T);
 	sprintf(buf, "%02d:%02d:%02d",tm.tm_hour, tm.tm_min, tm.tm_sec);
 	move(1, 65);
@@ -97,7 +99,6 @@ void setUpNetwork ( void ) {
 			who[i][j] = rnd() * 2. - 1.;
 		}
 	}
-	
 }
 
 void trainingMode( void ) {
@@ -116,6 +117,7 @@ void trainingMode( void ) {
 			calculateErrorForHiddenLayer(scan);
 			adjustWeights();
 			calculateNetworkError(scan);
+//			usleep(100000);
 		}
 		pass++;
 		checkForConvergence();
@@ -141,7 +143,7 @@ void readSampleData(void) {
 	for ( int i = 0; i < samples; i++ ) {
 		sample[i][0] = xorData[i].a1;
 		sample[i][1] = xorData[i].a2;
-		dout[i] = xorData[i].o1;
+		dout[i][0] = xorData[i].o1;
 	}
 }
 
@@ -152,12 +154,14 @@ void calculateOutputs(int scan) {
 	}
 	// Calculate output of input data
 	for ( int i = 0; i < idata; i++ ) {
-		iout[i] = ipdata[i];	
+		iout[i] = ipdata[i];
+		move(5+i,20);
+		printw("%f", iout[i]);
 	}
 	// Calculate input to hidden units
 	for ( int i = 0; i < idata; i++ ) {
 		for ( int j = 0; j < hidden; j++ ) {
-			hin[i][j] = iout[i] = wih[i][j];
+			hin[i][j] = iout[i] * wih[i][j];
 		}
 	}
 	// Calculate output of hidden units
@@ -168,6 +172,8 @@ void calculateOutputs(int scan) {
 		}
 		hsum[j] += hthr[j];
 		hout[j] = 1. / (1. + exp(-hsum[j]));
+		move(5+j, 31);
+		printw("%f", hout[j]);
 	}
 	// Calculate inputs of output units
 	for ( int j = 0; j < odata; j++ ) {
@@ -181,14 +187,16 @@ void calculateOutputs(int scan) {
 		for ( int k = 0; k < hidden; k++ ) {
 			osum[j] += oin[j][k];
 		}
-		osum[j] += osum[j] + othr[j];
+		osum[j] += othr[j];
 		oout[j] = 1. / ( 1. + exp(-osum[j]) );
+		move(5+j, 47);
+		printw("%f", oout[j]);
 	}
 }
 
 void calculateErrorForOutputLayer(int scan) {
-	for ( int i = 0; i < hidden; i++ ) {
-		obeta[i] = oout[i] - dout[i];
+	for ( int i = 0; i < odata; i++ ) {
+		obeta[i] = oout[i] - dout[scan][i];
 	}
 }
 
@@ -223,11 +231,11 @@ void adjustWeights(void) {
 void calculateNetworkError( int scan ) {
 	oerror[scan] = 0;
 	for ( int i = 0; i < odata; i++ ) {
-		oerror[scan] = oerror[scan] + ( oout[i] - dout[scan] ) * ( oout[i] - dout[scan] );
+		oerror[scan] = oerror[scan] + ( oout[i] - dout[scan][i] ) * ( oout[i] - dout[scan][i] );
 	}
 	oerror[scan] = oerror[scan] / 2.;
-	move(10+scan,4);
-    printw("oerror %f", oerror[scan]);
+//	move(10+scan,4);
+//      printw("oerror %f", oerror[scan]);
 }
 
 void checkForConvergence( void ) {
@@ -238,7 +246,7 @@ void checkForConvergence( void ) {
 	move(22, 1);
 	printw( "Delta = %f Network error = %f", delta, neterror );
 	refresh();
-	if ( neterror < tolerance ) 
+	if ( neterror < tolerance )
 		noConvergence = 0;
 	else
 		noConvergence = 1;

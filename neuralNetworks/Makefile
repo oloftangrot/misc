@@ -1,7 +1,13 @@
-all: test
+all: trial1 trial2 trial3
 
-test: test.cpp
-	gcc -Wall -o test test.cpp -lncurses -lm
+trial1: trial1.cpp
+	gcc -Wall -o trial1 trial1.cpp -lncurses -lm
+
+trial2: trial2.cpp
+	gcc -Wall -o trial2 trial2.cpp -lncurses -lm
+
+trial3: trial3.cpp
+	gcc -Wall -o $@  $^ -lncurses -lm
 
 clean:
-	rm test
+	rm -f trial1 trial2 trial3
