@@ -1,7 +1,6 @@
 #include <arpa/inet.h> 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 #include <sys/types.h>
 #include <linux/in.h>
 #include <sys/socket.h>
@@ -22,10 +21,7 @@ int main() {
   fd_set readfd;
   char buffer[1024] = { 0 };
   int i;
-  struct timespec tim;
-  tim.tv_sec = 1;
-  tim.tv_nsec = 0;
-//  tim.tv_nsec = 500000000;
+
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("sock error");
@@ -62,7 +58,6 @@ int main() {
         }
       }
     }
-		nanosleep( &tim , NULL) ;
   }
 }
 

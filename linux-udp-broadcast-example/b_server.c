@@ -79,8 +79,9 @@ int main(int argc, char * argv[]) {
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&client_addr, &addr_len);
         if (strstr(buffer, IP_FOUND)) {
-            memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1);
-            count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_len);
+//            memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1);
+            memcpy(buffer, nodeName, strlen(nodeName) + 1);
+              count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_len);
             (void) count; // Silence -Wall compiler warning.
 	          printf("\nClient connection information:\n\t IP: %s, Port: %d\n",
 	          				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
