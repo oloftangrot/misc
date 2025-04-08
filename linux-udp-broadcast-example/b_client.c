@@ -52,7 +52,7 @@ int main() {
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&server_addr, &addr_len);
         (void) count; // Silence -Wall compiler warning.
-        printf("\trecvmsg is %s\n", buffer);
+        printf("\trecvmsg is %s\n\r", buffer);
         if (strstr(buffer, IP_FOUND_ACK)) {
           printf("\tfound server IP is %s, Port is %d\n", inet_ntoa(server_addr.sin_addr),htons(server_addr.sin_port));
         }
