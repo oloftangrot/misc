@@ -48,7 +48,7 @@ int main() {
   broadcast_addr.sin_port = htons(PORT);
 
   for ( i = 0; i < 100; i++ ) {
-  	tickerMsg.data[8] = i ;
+  	tickerMsg.data[TICK_COUNTER_POS] = i ;
     ret = sendto(sock, (void*) &tickerMsg, 64, 0, (struct sockaddr*) &broadcast_addr, addr_len);
 
     FD_ZERO(&readfd);

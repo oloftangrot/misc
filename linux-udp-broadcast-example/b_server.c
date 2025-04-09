@@ -86,7 +86,7 @@ int main(int argc, char * argv[]) {
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&client_addr, &addr_len);
         memcpy( &tickerMsg, buffer, sizeof(tickerMsg) );
-        printf("Received %d bytes at tick %d from %s\n", count, tickerMsg.data[8], tickerMsg.str );
+        printf("Received %d bytes at tick %d from %s\n", count, tickerMsg.data[TICK_COUNTER_POS], tickerMsg.str );
         if (strstr(buffer, "BusTicker")) {
 //            memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1);
             memcpy(buffer, nodeName, strlen(nodeName) + 1);
