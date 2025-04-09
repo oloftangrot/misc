@@ -13,8 +13,13 @@
 #define IP_FOUND_ACK "IP_FOUND_ACK"
 #define PORT 9999
 
+#include "ticker.h"
+
 #define NODENAME_LENGTH (64)
+
 char nodeName[NODENAME_LENGTH]= "DefaultName";
+char tickerName[TICKERNAME_LENGTH];
+
 struct timespec responceDelay;
 
 void parseCommandLine(int argc, char * argv[]) {
@@ -47,6 +52,8 @@ int main(int argc, char * argv[]) {
   int ret;
   fd_set readfd;
   char buffer[1024] = { 0 };
+  union tickerMsg_t tickerMsg = { 0 };
+
   responceDelay.tv_sec = 5;
   responceDelay.tv_nsec = 0;
 	parseCommandLine( argc, argv );
@@ -78,7 +85,9 @@ int main(int argc, char * argv[]) {
 			nanosleep( &responceDelay , NULL) ;
       if (FD_ISSET(sock, &readfd)) {
         count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&client_addr, &addr_len);
-        if (strstr(buffer, IP_FOUND)) {
+        memcpy( &tickerMsg, buffer, sizeof(tickerMsg) );
+        printf("Received %d bytes at tick %d from %s\n", count, tickerMsg.data[8], tickerMsg.str );
+        if (strstr(buffer, "BusTicker")) {
 //            memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1);
             memcpy(buffer, nodeName, strlen(nodeName) + 1);
               count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_len);
@@ -87,6 +96,8 @@ int main(int argc, char * argv[]) {
 	          				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
         }
+        else
+        	printf("Received from unknown!\n");
       }
     }
   }

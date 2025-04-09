@@ -6,9 +6,13 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 
+#include "ticker.h"
+
 #define IP_FOUND "IP_FOUND"
 #define IP_FOUND_ACK "IP_FOUND_ACK"
 #define PORT 9999
+
+const char clientName[] = "BusTicker";
 
 int main() {
   int sock;
@@ -20,8 +24,11 @@ int main() {
   int ret;
   fd_set readfd;
   char buffer[1024] = { 0 };
+  union tickerMsg_t  tickerMsg = { 0 };
   int i;
 
+	memcpy(tickerMsg.str, clientName, strlen(clientName) );
+	
   sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("sock error");
@@ -41,7 +48,8 @@ int main() {
   broadcast_addr.sin_port = htons(PORT);
 
   for ( i = 0; i < 100; i++ ) {
-    ret = sendto(sock, IP_FOUND, strlen(IP_FOUND), 0, (struct sockaddr*) &broadcast_addr, addr_len);
+  	tickerMsg.data[8] = i ;
+    ret = sendto(sock, (void*) &tickerMsg, 64, 0, (struct sockaddr*) &broadcast_addr, addr_len);
 
     FD_ZERO(&readfd);
     FD_SET(sock, &readfd);
