@@ -49,7 +49,7 @@ int main() {
 
   for ( i = 0; i < 100; i++ ) {
   	tickerMsg.data[TICK_COUNTER_POS] = i ;
-    ret = sendto(sock, (void*) &tickerMsg, 64, 0, (struct sockaddr*) &broadcast_addr, addr_len);
+    ret = sendto(sock, (void*) &tickerMsg, sizeof( tickerMsg ), 0, (struct sockaddr*) &broadcast_addr, addr_len);
 
     FD_ZERO(&readfd);
     FD_SET(sock, &readfd);
