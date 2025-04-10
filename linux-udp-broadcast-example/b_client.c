@@ -5,6 +5,9 @@
 #include <linux/in.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "ticker.h"
 
@@ -13,6 +16,11 @@
 #define PORT 9999
 
 const char clientName[] = "BusTicker";
+
+struct timeval tv;
+struct timezone tz;
+
+const unsigned int tickTimeInSec = 1;
 
 int main() {
   int sock;
@@ -26,6 +34,7 @@ int main() {
   char buffer[1024] = { 0 };
   union tickerMsg_t  tickerMsg = { 0 };
   int i;
+	time_t past=0;
 
 	memcpy(tickerMsg.str, clientName, strlen(clientName) );
 	
@@ -49,6 +58,13 @@ int main() {
 
   for ( i = 0; i < 100; i++ ) {
   	tickerMsg.data[TICK_COUNTER_POS] = i ;
+		
+		do {
+			usleep( 0 ); // Yield to the operating system.
+			gettimeofday(&tv,&tz);
+		} while ( tv.tv_sec < ( past + tickTimeInSec ) );
+		past = tv.tv_sec;
+		
     ret = sendto(sock, (void*) &tickerMsg, sizeof( tickerMsg ), 0, (struct sockaddr*) &broadcast_addr, addr_len);
 
     FD_ZERO(&readfd);
