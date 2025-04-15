@@ -1,6 +1,7 @@
 *.o
 b_client
 b_server
+b_listner
 
 # Windows image file caches
 Thumbs.db
