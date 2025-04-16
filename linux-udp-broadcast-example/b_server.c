@@ -14,10 +14,9 @@
 #define PORT 9999
 
 #include "ticker.h"
+#include "message.h"
 
-#define NODENAME_LENGTH (64)
-
-char nodeName[NODENAME_LENGTH]= "DefaultName";
+char nodeName[MESSENGERNAME_LENGTH]= "DefaultName";
 char tickerName[TICKERNAME_LENGTH];
 
 struct timespec responceDelay;
@@ -26,7 +25,7 @@ void parseCommandLine(int argc, char * argv[]) {
 	long delay = -1;
 
 	if ( argc >= 2) {
-		if ( strlen(argv[1]) < ( NODENAME_LENGTH - 1) ) {
+		if ( strlen(argv[1]) < ( MESSENGERNAME_LENGTH - 1) ) {
 			strcpy ( nodeName, argv[1] );
 		}
 		else {
@@ -47,13 +46,17 @@ int main(int argc, char * argv[]) {
 //  int yes = 1;
   struct sockaddr_in client_addr;
   struct sockaddr_in server_addr;
-  socklen_t addr_len;
+  struct sockaddr_in broadcast_addr;
+
+  socklen_t addr_len, broadcast_addr_len;
   int count;
+ 	int yes = 1;
   int ret;
   fd_set readfd;
   char buffer[1024] = { 0 };
   union tickerMsg_t tickerMsg = { 0 };
-
+	union messengerMsg_t myMsg = { 0 };
+	
   responceDelay.tv_sec = 5;
   responceDelay.tv_nsec = 0;
 	parseCommandLine( argc, argv );
@@ -63,13 +66,25 @@ int main(int argc, char * argv[]) {
     perror("sock error\n");
     return -1;
   }
-
+  ret = setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&yes, sizeof(yes));
+  if (ret == -1) {
+    perror("setsockopt error");
+    return 0;
+  }
   addr_len = sizeof(struct sockaddr_in);
 
   memset((void*)&server_addr, 0, addr_len);
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = htons(INADDR_ANY);
   server_addr.sin_port = htons(PORT);
+
+  broadcast_addr_len = sizeof(struct sockaddr_in);
+
+  memset((void*)&broadcast_addr, 0, broadcast_addr_len);
+  broadcast_addr.sin_family = AF_INET;
+  broadcast_addr.sin_addr.s_addr = htonl( INADDR_BROADCAST );
+  broadcast_addr.sin_port = htons( COMMON_MESSAGE_PORT );
+
 
   ret = bind(sock, (struct sockaddr*)&server_addr, addr_len);
   if (ret < 0) {
@@ -89,8 +104,9 @@ int main(int argc, char * argv[]) {
         printf("Received %d bytes at tick %d from %s\n", count, tickerMsg.data[TICK_COUNTER_POS], tickerMsg.str );
         if (strstr(buffer, "BusTicker")) {
 //            memcpy(buffer, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1);
-            memcpy(buffer, nodeName, strlen(nodeName) + 1);
-              count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr, addr_len);
+            memcpy(myMsg.str, nodeName, strlen(nodeName) + 1);
+            myMsg.data[TICK_COUNTER_POS] = tickerMsg.data[TICK_COUNTER_POS];
+              count = sendto(sock, &myMsg, sizeof( myMsg ), 0, (struct sockaddr*)&broadcast_addr, broadcast_addr_len);
             (void) count; // Silence -Wall compiler warning.
 	          printf("\nClient connection information:\n\t IP: %s, Port: %d\n",
 	          				inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
