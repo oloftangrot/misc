@@ -1,5 +1,5 @@
 *.o
-b_client
+b_ticker
 b_server
 b_listner
 
