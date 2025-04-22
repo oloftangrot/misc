@@ -31,7 +31,9 @@ int main() {
   union tickerMsg_t  tickerMsg = { 0 };
   int i;
 	time_t past=0;
-
+  setvbuf(stdout, NULL, _IONBF, 0);
+	printf("%s started.\n", clientName );
+	
 	memcpy(tickerMsg.str, clientName, strlen(clientName) );
 	
   sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -62,6 +64,7 @@ int main() {
 		past = tv.tv_sec;
 		
     ret = sendto(sock, (void*) &tickerMsg, sizeof( tickerMsg ), 0, (struct sockaddr*) &broadcast_addr, addr_len);
+    printf( "." );
   }
 }
 
